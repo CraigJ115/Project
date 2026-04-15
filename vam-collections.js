@@ -150,7 +150,7 @@ function renderModal() {
   } else if (!r) {
     body = `<p class="modal-error">Could not load details.</p>`;
   } else {
-    const imgId  = r.images?.[0]?.imageId;
+    const imgId = r.images?.[0]?.imageId || r.images?.[0] || "";
     const title  = r.titles?.[0]?.title || r._primaryTitle || "Untitled";
     const maker  = r.artistMakerPerson?.[0]?.name?.text || r.artistMakerOrganisations?.[0]?.name?.text || "";
     const date   = r.productionDates?.[0]?.date?.text || "";
@@ -282,7 +282,6 @@ document.addEventListener("DOMContentLoaded", () => {
 // ── Voice helpers ──────────────────────────────────────────
 const synonyms = {
   "doll": "dolls", "toy": "toys", "bike": "bicycle", "bicycle": "bicycles",
-  "car": "automobiles", "automobile": "automobiles", "truck": "vehicles",
   "dress": "fashion", "clothes": "fashion", "clothing": "fashion", "hat": "hats",
   "gun": "firearms", "sword": "swords", "knife": "knives", "weapon": "weapons",
   "clock": "timepieces", "watch": "watches", "timepiece": "timepieces",
