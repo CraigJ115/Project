@@ -172,7 +172,7 @@ function renderModal() {
         <h2 class="modal-title">${esc(title)}</h2>
         <div class="modal-meta">${metaRows}</div>
         ${desc ? `<div class="modal-desc">${esc(desc)}</div>` : ""}
-        <a class="modal-link" href="${VAM_URL(selectedId)}" target="_blank" rel="noreferrer">View full record ↗</a>
+        <button class="more-like-this-btn" id="btn-more-like-this">Find more like this</button>
       </div>`;
   }
 
@@ -189,17 +189,14 @@ function renderModal() {
 function render() {
   const { inputVal, query, pageSize, view, results, total, loading, error } = state;
 
-  // Search input
   const inp = document.getElementById("search-input");
   if (inp && document.activeElement !== inp) inp.value = inputVal;
 
-  // View buttons
   ["grid","list"].forEach(v => {
     const b = document.getElementById(`btn-view-${v}`);
     if (b) b.classList.toggle("active", view === v);
   });
 
-  // Result count
   const countEl = document.getElementById("result-count");
   const queryEl = document.getElementById("result-query");
   if (countEl) {
@@ -208,13 +205,12 @@ function render() {
     else { countEl.textContent = `${total.toLocaleString()} objects`; if (queryEl) queryEl.textContent = query ? `matching "${query}"` : ""; }
   }
 
-  // Results
   const resultsEl = document.getElementById("results");
   if (resultsEl) {
     if (loading) {
       resultsEl.innerHTML = `<div class="state-center"><div class="spinner"></div><p>Searching the collections…</p></div>`;
     } else if (error) {
-      resultsEl.innerHTML = `<div class="state-center"><p style="color:#c0392b">Failed to load results. Is the proxy running?</p></div>`;
+      resultsEl.innerHTML = `<div class="state-center"><p style="color:#c0392b">Failed to load results.</p></div>`;
     } else if (!results.length) {
       resultsEl.innerHTML = `<div class="state-center"><p style="font-size:16px;margin-bottom:6px">No results found</p><p>Try a different search term.</p></div>`;
     } else {
@@ -223,14 +219,12 @@ function render() {
     }
   }
 
-  // Pagination
   const { paginationHtml, pageSizeHtml } = loading ? { paginationHtml: "", pageSizeHtml: "" } : renderPagination();
   const pagEl = document.getElementById("pagination");
   const psEl  = document.getElementById("page-size-row");
   if (pagEl) pagEl.innerHTML = paginationHtml;
   if (psEl)  psEl.innerHTML  = pageSizeHtml || "";
 
-  // Modal
   const modalRoot = document.getElementById("modal-root");
   if (modalRoot) modalRoot.innerHTML = renderModal();
 
@@ -239,12 +233,10 @@ function render() {
 
 // ── Delegated events (re-attached after each render) ───────
 function attachDelegatedEvents() {
-  // Cards
   document.querySelectorAll("[data-id]").forEach(el => {
     el.addEventListener("click", () => openModal(el.dataset.id));
   });
 
-  // Pagination buttons
   document.querySelectorAll("[data-page]").forEach(btn => {
     if (!btn.disabled) btn.addEventListener("click", () => {
       setState({ page: Number(btn.dataset.page) });
@@ -253,7 +245,6 @@ function attachDelegatedEvents() {
     });
   });
 
-  // Page size
   document.querySelectorAll("[data-size]").forEach(el => {
     el.addEventListener("click", () => {
       setState({ pageSize: Number(el.dataset.size), page: 1 });
@@ -261,11 +252,14 @@ function attachDelegatedEvents() {
     });
   });
 
-  // Modal backdrop / close
   const backdrop = document.getElementById("modal-backdrop");
   if (backdrop) backdrop.addEventListener("click", e => { if (e.target === backdrop) closeModal(); });
+
   const closeBtn = document.getElementById("btn-modal-close");
   if (closeBtn) closeBtn.addEventListener("click", closeModal);
+
+  const moreLikeBtn = document.getElementById("btn-more-like-this");
+  if (moreLikeBtn) moreLikeBtn.addEventListener("click", runMoreLikeThis);
 }
 
 // ── Static event listeners (once on load) ─────────────────
@@ -279,7 +273,8 @@ document.addEventListener("DOMContentLoaded", () => {
   document.getElementById("btn-search-go").addEventListener("click", () => {
     setState({ query: state.inputVal, page: 1 }); doFetch();
   });
-render();
+
+  render();
   doFetch();
   initVoice();
 });
@@ -305,6 +300,7 @@ const synonyms = {
   "train": "railways", "railway": "railways",
   "god": "religion", "church": "religion", "cross": "religion",
 };
+
 function setVoiceStatus(message) {
   const statusEl = document.getElementById("voice-status");
   if (statusEl) statusEl.textContent = message;
@@ -324,6 +320,24 @@ function runVoiceSearch(term) {
   doFetch();
 }
 
+function runMoreLikeThis() {
+  const { modalRec } = state;
+  if (!modalRec) { setVoiceStatus("No item is open."); return; }
+
+  const type = modalRec.objectType || "";
+  const category = modalRec.categories?.[0]?.text || "";
+  const searchTerm = type || category;
+
+  if (!searchTerm) { setVoiceStatus("Couldn't find a category for this item."); return; }
+
+  closeModal();
+  setVoiceStatus(`Finding more: "${searchTerm}"`);
+  const input = document.getElementById("search-input");
+  if (input) input.value = searchTerm;
+  setState({ inputVal: searchTerm, query: searchTerm, page: 1 });
+  doFetch();
+}
+
 function initVoice() {
   const micBtn = document.getElementById("btn-mic");
   if (!micBtn) return;
@@ -337,11 +351,13 @@ function initVoice() {
 
   annyang.removeCommands();
   annyang.addCommands({
-    "search for *term": runVoiceSearch,
-    "find *term":       runVoiceSearch,
-    "show me *term":    runVoiceSearch,
-    "look for *term":   runVoiceSearch,
-    "*term":            runVoiceSearch,
+    "search for *term":       runVoiceSearch,
+    "find *term":             runVoiceSearch,
+    "show me *term":          runVoiceSearch,
+    "look for *term":         runVoiceSearch,
+    "more like this":         runMoreLikeThis,
+    "show me more like this": runMoreLikeThis,
+    "*term":                  runVoiceSearch,
   });
 
   annyang.addCallback("start", () => {
@@ -353,7 +369,7 @@ function initVoice() {
     micBtn.classList.remove("is-listening");
     setTimeout(() => {
       const status = document.getElementById("voice-status")?.textContent;
-      if (status && !status.includes("Heard:")) setVoiceStatus("Mic stopped.");
+      if (status && !status.includes("Searching")) setVoiceStatus("Mic stopped.");
     }, 500);
   });
 
