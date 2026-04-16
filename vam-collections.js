@@ -709,7 +709,7 @@ function initVoice() {
 
   annyang.removeCommands();
 
-  annyang.addCommands({
+  const commands = {
     // Scrolling commands
     "scroll page down": () => {
       window.scrollBy({ top: 400, behavior: "smooth" });
@@ -729,6 +729,21 @@ function initVoice() {
       } else {
         window.scrollBy({ top: 400, behavior: "smooth" });
         setVoiceStatus("Scrolling down.");
+      }
+    },
+    "scroll :direction": (direction) => {
+      const isDown = direction.toLowerCase().includes("down");
+      const distance = isDown ? 400 : -400;
+      
+      if (state.selectedId) {
+        const modal = document.querySelector(".modal");
+        if (modal) {
+          modal.scrollBy({ top: distance, behavior: "smooth" });
+          setVoiceStatus(isDown ? "Scrolling modal down." : "Scrolling modal up.");
+        }
+      } else {
+        window.scrollBy({ top: distance, behavior: "smooth" });
+        setVoiceStatus(isDown ? "Scrolling down." : "Scrolling up.");
       }
     },
     "scroll up": () => {
@@ -876,8 +891,11 @@ function initVoice() {
     "find *term": runVoiceSearch,
     "show me *term": runVoiceSearch,
     "look for *term": runVoiceSearch,
-    "*term": runVoiceSearch,
-  });
+    "search *term": runVoiceSearch,
+  };
+
+  console.log("Adding commands to annyang:", Object.keys(commands).length, "commands");
+  annyang.addCommands(commands);
 
 let isListening = false;
 
