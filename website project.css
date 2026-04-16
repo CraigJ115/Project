@@ -1,7 +1,7 @@
 /* Base */
 body {
-  font-family: sans-serif;
-  background: #f5f5f5;
+  font-family: Arial;
+  background: #E8EDF5;
   color: #111;
   margin: 0;
 }
@@ -14,8 +14,8 @@ body {
 
 /* Nav */
 .main-nav {
-  background: #111;
-  color: white;
+  background: #C4D1E6;
+  color: #111;
 }
 
 .nav-inner {
@@ -36,13 +36,13 @@ body {
 }
 
 .nav-links a {
-  color: white;
+  color: #111;
   text-decoration: none;
 }
 
 /* Search bar */
 .main-search-bar {
-  background: #111;
+  background: #C4D1E6;
   padding: 15px;
 }
 

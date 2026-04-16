@@ -776,13 +776,47 @@ function initVoice() {
     "*term": runVoiceSearch,
   });
 
+let isListening = false;
+
   const startListening = () => {
-    setVoiceStatus("Listening...");
-    annyang.start({
-      autoRestart: false,
-      continuous: false,
-    });
+    if (isListening) {
+      annyang.abort();
+      isListening = false;
+      if (micBtn) micBtn.classList.remove("is-listening");
+      if (interactBtn) interactBtn.classList.remove("is-listening");
+      setVoiceStatus("Voice off.");
+      return;
+    }
+    isListening = true;
+    if (micBtn) micBtn.classList.add("is-listening");
+    if (interactBtn) interactBtn.classList.add("is-listening");
+    setVoiceStatus("Listening…");
+    annyang.start({ autoRestart: true, continuous: true });
   };
+
+  annyang.addCallback("start", () => {
+    setVoiceStatus("Listening…");
+  });
+
+  annyang.addCallback("end", () => {
+    // if still supposed to be listening, restart
+    if (isListening) {
+      setTimeout(() => annyang.start({ autoRestart: true, continuous: true }), 300);
+    }
+  });
+
+  annyang.addCallback("error", () => {
+    if (isListening) {
+      setTimeout(() => annyang.start({ autoRestart: true, continuous: true }), 300);
+    }
+  });
+
+  annyang.addCallback("resultNoMatch", () => {
+    setVoiceStatus("Didn't catch that — still listening…");
+  });
+
+  if (micBtn) micBtn.addEventListener("click", startListening);
+  if (interactBtn) interactBtn.addEventListener("click", startListening);
 
   annyang.addCallback("start", () => {
     if (micBtn) micBtn.classList.add("is-listening");
