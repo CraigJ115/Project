@@ -34,6 +34,8 @@ let state = {
   selectedId: null,
   modalData: null,
   modalLoading: false,
+  similarItems: [],
+  similarLoading: false,
 };
 
 function setState(patch) {
@@ -74,6 +76,8 @@ async function openModal(id) {
     selectedId: id,
     modalData: null,
     modalLoading: true,
+    similarItems: [],
+    similarLoading: true,
   });
 
   try {
@@ -82,9 +86,13 @@ async function openModal(id) {
       modalData: data.record,
       modalLoading: false,
     });
+    
+    // Fetch similar items
+    await fetchSimilarItems(data.record);
   } catch (err) {
     setState({
       modalLoading: false,
+      similarLoading: false,
     });
   }
 }
@@ -94,6 +102,40 @@ function closeModal() {
     selectedId: null,
     modalData: null,
   });
+  document.body.style.overflow = "";
+}
+
+// fetch similar items based on object type or category
+async function fetchSimilarItems(modalData) {
+  if (!modalData) {
+    setState({ similarLoading: false });
+    return;
+  }
+
+  const type = modalData.objectType || "";
+  const category = modalData.categories?.[0]?.text || "";
+  const searchTerm = type || category;
+
+  if (!searchTerm) {
+    setState({ similarLoading: false });
+    return;
+  }
+
+  try {
+    const params = new URLSearchParams({
+      q: searchTerm,
+      page_size: 4,
+    });
+    const data = await fetchData(`${BASE_URL}?${params}`);
+    setState({
+      similarItems: (data.records || []).slice(0, 4),
+      similarLoading: false,
+    });
+  } catch (err) {
+    setState({
+      similarLoading: false,
+    });
+  }
 }
 
 // stop random html chaos
@@ -110,6 +152,20 @@ function escapeHTML(str) {
 
 function noImageHTML() {
   return `<div class="no-img-msg">No image available</div>`;
+}
+
+function makeSimilarCard(item) {
+  const imgId = item._primaryImageId;
+  const title = item._primaryTitle || "Untitled";
+  
+  return `
+    <div class="similar-card" data-id="${item.systemNumber}" title="${escapeHTML(title)}">
+      <div class="similar-card-img">
+        ${makeImg(imgId, "100", title)}
+      </div>
+      <div class="similar-card-title">${escapeHTML(title.length > 30 ? title.substring(0, 27) + "..." : title)}</div>
+    </div>
+  `;
 }
 
 function makeImg(imgId, size, title) {
@@ -261,7 +317,7 @@ function makePagination() {
 }
 
 function makeModal() {
-  const { selectedId, modalData, modalLoading } = state;
+  const { selectedId, modalData, modalLoading, similarItems, similarLoading } = state;
 
   if (!selectedId) return "";
 
@@ -308,6 +364,12 @@ function makeModal() {
       )
       .join("");
 
+    const similarHtml = similarLoading 
+      ? `<div class="similar-section"><p>Loading similar items...</p></div>`
+      : similarItems.length > 0
+      ? `<div class="similar-section"><h3>More like this</h3><div class="similar-items-grid">${similarItems.map(item => makeSimilarCard(item)).join("")}</div></div>`
+      : "";
+
     body = `
       <div class="modal-img-panel">
         ${makeImg(imgId, "500", title)}
@@ -318,7 +380,7 @@ function makeModal() {
         <h2 class="modal-title">${escapeHTML(title)}</h2>
         <div class="modal-meta">${rows}</div>
         ${desc ? `<div class="modal-desc">${escapeHTML(desc)}</div>` : ""}
-        <button class="more-like-this-btn" id="btn-more-like-this">Find more like this</button>
+        ${similarHtml}
       </div>
     `;
   }
@@ -343,6 +405,7 @@ function render() {
     total,
     loading,
     error,
+    selectedId,
   } = state;
 
   const input = document.getElementById("search-input");
@@ -414,7 +477,12 @@ function render() {
   if (pageSizeEl) pageSizeEl.innerHTML = pageSizeHtml || "";
 
   const modalRoot = document.getElementById("modal-root");
-  if (modalRoot) modalRoot.innerHTML = makeModal();
+  if (modalRoot) {
+    modalRoot.innerHTML = makeModal();
+    if (selectedId) {
+      document.body.style.overflow = "hidden";
+    }
+  }
 
   attachEventsAgain();
 }
@@ -454,9 +522,6 @@ function attachEventsAgain() {
 
   const closeBtn = document.getElementById("btn-modal-close");
   if (closeBtn) closeBtn.addEventListener("click", closeModal);
-
-  const moreLikeBtn = document.getElementById("btn-more-like-this");
-  if (moreLikeBtn) moreLikeBtn.addEventListener("click", runMoreLikeThis);
 }
 
 // stuff that only needs setting up once
@@ -559,14 +624,14 @@ function setVoiceStatus(message) {
 }
 
 function runVoiceSearch(term) {
-  const cleanTerm = (term || "").trim();
+  const cleanTerm = (term || "").trim().toLowerCase();
 
   if (!cleanTerm) {
-    setVoiceStatus("Didn’t catch that.");
+    setVoiceStatus("Didn't catch that.");
     return;
   }
 
-  const searchTerm = synonyms[cleanTerm.toLowerCase()] || cleanTerm;
+  const searchTerm = synonyms[cleanTerm] || term;
   const input = document.getElementById("search-input");
 
   if (input) input.value = searchTerm;
@@ -645,13 +710,65 @@ function initVoice() {
   annyang.removeCommands();
 
   annyang.addCommands({
-    // searching
-    "search for *term": runVoiceSearch,
-    "find *term": runVoiceSearch,
-    "show me *term": runVoiceSearch,
-    "look for *term": runVoiceSearch,
+    // Scrolling commands
+    "scroll page down": () => {
+      window.scrollBy({ top: 400, behavior: "smooth" });
+      setVoiceStatus("Scrolling page down.");
+    },
+    "scroll page up": () => {
+      window.scrollBy({ top: -400, behavior: "smooth" });
+      setVoiceStatus("Scrolling page up.");
+    },
+    "scroll down": () => {
+      if (state.selectedId) {
+        const modal = document.querySelector(".modal");
+        if (modal) {
+          modal.scrollBy({ top: 400, behavior: "smooth" });
+          setVoiceStatus("Scrolling modal down.");
+        }
+      } else {
+        window.scrollBy({ top: 400, behavior: "smooth" });
+        setVoiceStatus("Scrolling down.");
+      }
+    },
+    "scroll up": () => {
+      if (state.selectedId) {
+        const modal = document.querySelector(".modal");
+        if (modal) {
+          modal.scrollBy({ top: -400, behavior: "smooth" });
+          setVoiceStatus("Scrolling modal up.");
+        }
+      } else {
+        window.scrollBy({ top: -400, behavior: "smooth" });
+        setVoiceStatus("Scrolling up.");
+      }
+    },
+    "go to top": () => {
+      if (state.selectedId) {
+        const modal = document.querySelector(".modal");
+        if (modal) {
+          modal.scrollTo({ top: 0, behavior: "smooth" });
+          setVoiceStatus("Going to top of modal.");
+        }
+      } else {
+        window.scrollTo({ top: 0, behavior: "smooth" });
+        setVoiceStatus("Going to top.");
+      }
+    },
+    "go to bottom": () => {
+      if (state.selectedId) {
+        const modal = document.querySelector(".modal");
+        if (modal) {
+          modal.scrollTo({ top: modal.scrollHeight, behavior: "smooth" });
+          setVoiceStatus("Going to bottom of modal.");
+        }
+      } else {
+        window.scrollTo({ top: document.body.scrollHeight, behavior: "smooth" });
+        setVoiceStatus("Going to bottom.");
+      }
+    },
 
-    // page movement
+    // Page movement
     "next page": () => {
       const { page, total, pageSize } = state;
       const totalPages = Math.ceil(total / pageSize);
@@ -698,7 +815,7 @@ function initVoice() {
       setVoiceStatus("Back to page one.");
     },
 
-    // change layout
+    // Layout
     "grid view": () => {
       setState({ view: "grid" });
       setVoiceStatus("Grid view.");
@@ -716,31 +833,13 @@ function initVoice() {
       setVoiceStatus("List view.");
     },
 
-    // scrolling
-    "scroll down": () => {
-      window.scrollBy({ top: 400, behavior: "smooth" });
-      setVoiceStatus("Scrolling down.");
-    },
-    "scroll up": () => {
-      window.scrollBy({ top: -400, behavior: "smooth" });
-      setVoiceStatus("Scrolling up.");
-    },
-    "go to top": () => {
-      window.scrollTo({ top: 0, behavior: "smooth" });
-      setVoiceStatus("Going to top.");
-    },
-    "go to bottom": () => {
-      window.scrollTo({ top: document.body.scrollHeight, behavior: "smooth" });
-      setVoiceStatus("Going to bottom.");
-    },
-
-    // modal stuff
+    // Modal
     "close": closeModal,
     "close modal": closeModal,
     "more like this": runMoreLikeThis,
     "show me more like this": runMoreLikeThis,
 
-    // open result by number
+    // Open results by index
     "open first result": () => openResultByIndex(0),
     "open second result": () => openResultByIndex(1),
     "open third result": () => openResultByIndex(2),
@@ -753,7 +852,7 @@ function initVoice() {
     "open result four": () => openResultByIndex(3),
     "open result five": () => openResultByIndex(4),
 
-    // page size
+    // Page size
     "show fifteen results": () => {
       setState({
         pageSize: 15,
@@ -772,7 +871,11 @@ function initVoice() {
       setVoiceStatus("Showing 50 results.");
     },
 
-    // fallback
+    // Search commands (LAST - least specific)
+    "search for *term": runVoiceSearch,
+    "find *term": runVoiceSearch,
+    "show me *term": runVoiceSearch,
+    "look for *term": runVoiceSearch,
     "*term": runVoiceSearch,
   });
 
@@ -793,30 +896,6 @@ let isListening = false;
     setVoiceStatus("Listening…");
     annyang.start({ autoRestart: true, continuous: true });
   };
-
-  annyang.addCallback("start", () => {
-    setVoiceStatus("Listening…");
-  });
-
-  annyang.addCallback("end", () => {
-    // if still supposed to be listening, restart
-    if (isListening) {
-      setTimeout(() => annyang.start({ autoRestart: true, continuous: true }), 300);
-    }
-  });
-
-  annyang.addCallback("error", () => {
-    if (isListening) {
-      setTimeout(() => annyang.start({ autoRestart: true, continuous: true }), 300);
-    }
-  });
-
-  annyang.addCallback("resultNoMatch", () => {
-    setVoiceStatus("Didn't catch that — still listening…");
-  });
-
-  if (micBtn) micBtn.addEventListener("click", startListening);
-  if (interactBtn) interactBtn.addEventListener("click", startListening);
 
   annyang.addCallback("start", () => {
     if (micBtn) micBtn.classList.add("is-listening");
@@ -841,6 +920,10 @@ let isListening = false;
         setVoiceStatus("Done. Click to speak again.");
       }
     }, 500);
+
+    if (isListening) {
+      setTimeout(() => annyang.start({ autoRestart: true, continuous: true }), 300);
+    }
   });
 
   annyang.addCallback("error", () => {
@@ -850,9 +933,7 @@ let isListening = false;
   });
 
   annyang.addCallback("resultNoMatch", () => {
-    if (micBtn) micBtn.classList.remove("is-listening");
-    if (interactBtn) interactBtn.classList.remove("is-listening");
-    setVoiceStatus("Didn’t catch that. Try again.");
+    setVoiceStatus("Didn't catch that — still listening…");
   });
 
   if (micBtn) micBtn.addEventListener("click", startListening);
