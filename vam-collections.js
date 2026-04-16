@@ -36,6 +36,7 @@ let state = {
   modalLoading: false,
   similarItems: [],
   similarLoading: false,
+  showSimilarItems: false,
 };
 
 function setState(patch) {
@@ -77,7 +78,8 @@ async function openModal(id) {
     modalData: null,
     modalLoading: true,
     similarItems: [],
-    similarLoading: true,
+    similarLoading: false,
+    showSimilarItems: false,
   });
 
   try {
@@ -86,9 +88,6 @@ async function openModal(id) {
       modalData: data.record,
       modalLoading: false,
     });
-    
-    // Fetch similar items
-    await fetchSimilarItems(data.record);
   } catch (err) {
     setState({
       modalLoading: false,
@@ -101,6 +100,7 @@ function closeModal() {
   setState({
     selectedId: null,
     modalData: null,
+    showSimilarItems: false,
   });
   document.body.style.overflow = "";
 }
@@ -317,7 +317,7 @@ function makePagination() {
 }
 
 function makeModal() {
-  const { selectedId, modalData, modalLoading, similarItems, similarLoading } = state;
+  const { selectedId, modalData, modalLoading, similarItems, similarLoading, showSimilarItems } = state;
 
   if (!selectedId) return "";
 
@@ -364,10 +364,12 @@ function makeModal() {
       )
       .join("");
 
-    const similarHtml = similarLoading 
-      ? `<div class="similar-section"><p>Loading similar items...</p></div>`
-      : similarItems.length > 0
-      ? `<div class="similar-section"><h3>More like this</h3><div class="similar-items-grid">${similarItems.map(item => makeSimilarCard(item)).join("")}</div></div>`
+    const similarHtml = showSimilarItems
+      ? (similarLoading 
+        ? `<div class="similar-section"><p>Loading similar items...</p></div>`
+        : similarItems.length > 0
+        ? `<div class="similar-section"><h3>More like this</h3><div class="similar-items-grid">${similarItems.map(item => makeSimilarCard(item)).join("")}</div></div>`
+        : "")
       : "";
 
     body = `
@@ -526,6 +528,8 @@ function attachEventsAgain() {
 
 // stuff that only needs setting up once
 document.addEventListener("DOMContentLoaded", () => {
+  showWelcomeModal();
+
   const searchInput = document.getElementById("search-input");
   const searchBtn = document.getElementById("btn-search-go");
 
@@ -676,6 +680,74 @@ function runMoreLikeThis() {
   });
 
   loadResults();
+}
+
+function runMoreLikeThis() {
+  const { modalData } = state;
+
+  if (!modalData) {
+    setVoiceStatus("No item is open.");
+    return;
+  }
+
+  const type = modalData.objectType || "";
+  const category = modalData.categories?.[0]?.text || "";
+  const searchTerm = type || category;
+
+  if (!searchTerm) {
+    setVoiceStatus("Couldn't find anything similar for this one.");
+    return;
+  }
+
+  setVoiceStatus(`Finding more like "${searchTerm}"`);
+  
+  // Fetch and show similar items
+  setState({ showSimilarItems: true, similarLoading: true });
+  fetchSimilarItems(modalData);
+}
+
+function showWelcomeModal() {
+  const html = `
+    <div class="welcome-modal-backdrop" id="welcome-backdrop">
+      <div class="welcome-modal">
+        <h1>Welcome to V&A Collections Explorer</h1>
+        
+        <h2>How to Use:</h2>
+        <ul>
+          <li><strong>Search:</strong> Type or say "search for [item]" to find objects in the collection</li>
+          <li><strong>Voice Control:</strong> Click the microphone icon to use voice commands</li>
+          <li><strong>View Modes:</strong> Switch between grid and list views for different layouts</li>
+          <li><strong>Item Details:</strong> Click any item to see full details and similar pieces</li>
+          <li><strong>Navigate:</strong> Use pagination or voice commands like "next page" and "previous page"</li>
+        </ul>
+
+        <h2>Voice Commands:</h2>
+        <ul>
+          <li><strong>Scrolling:</strong> "scroll down", "scroll up", "go to top", "go to bottom"</li>
+          <li><strong>Navigation:</strong> "next page", "previous page", "first page"</li>
+          <li><strong>Views:</strong> "grid view", "list view"</li>
+          <li><strong>Results:</strong> "open first result", "open second result", etc.</li>
+          <li><strong>Modal:</strong> "close", "more", "show me more"</li>
+          <li><strong>Search:</strong> "search for [item]", "find [item]", "show me [item]"</li>
+        </ul>
+
+        <button class="welcome-modal-close" id="btn-welcome-close">Get Started</button>
+      </div>
+    </div>
+  `;
+
+  const root = document.getElementById("welcome-modal-root");
+  if (root) {
+    root.innerHTML = html;
+    document.getElementById("btn-welcome-close")?.addEventListener("click", () => {
+      root.innerHTML = "";
+    });
+    document.getElementById("welcome-backdrop")?.addEventListener("click", (e) => {
+      if (e.target.id === "welcome-backdrop") {
+        root.innerHTML = "";
+      }
+    });
+  }
 }
 
 function openResultByIndex(index) {
@@ -851,8 +923,15 @@ function initVoice() {
     // Modal
     "close": closeModal,
     "close modal": closeModal,
+    "more": () => {
+      // Only trigger "more like this" if a modal is open
+      if (state.selectedId) {
+        runMoreLikeThis();
+      }
+    },
     "more like this": runMoreLikeThis,
     "show me more like this": runMoreLikeThis,
+    "show me more": runMoreLikeThis,
 
     // Open results by index
     "open first result": () => openResultByIndex(0),
@@ -889,7 +968,8 @@ function initVoice() {
     // Search commands (LAST - least specific)
     "search for *term": runVoiceSearch,
     "find *term": runVoiceSearch,
-    "show me *term": runVoiceSearch,
+    "show me more like this": runMoreLikeThis,
+    "show me more": runMoreLikeThis,
     "look for *term": runVoiceSearch,
     "search *term": runVoiceSearch,
   };
