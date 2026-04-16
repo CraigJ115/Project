@@ -339,51 +339,143 @@ function runMoreLikeThis() {
 
 function initVoice() {
   const micBtn = document.getElementById("btn-mic");
-  if (!micBtn) return;
+  const interactBtn = document.getElementById("btn-voice-interact");
 
   if (!window.annyang) {
-    micBtn.disabled = true;
-    micBtn.title = "Voice search is not supported here";
+    if (micBtn) { micBtn.disabled = true; }
+    if (interactBtn) { interactBtn.disabled = true; }
     setVoiceStatus("Voice search unavailable.");
     return;
   }
 
   annyang.removeCommands();
   annyang.addCommands({
+    // ── Search ──────────────────────────────────────
     "search for *term":       runVoiceSearch,
     "find *term":             runVoiceSearch,
     "show me *term":          runVoiceSearch,
     "look for *term":         runVoiceSearch,
+
+    // ── Navigation ──────────────────────────────────
+    "next page": () => {
+      const { page, total, pageSize } = state;
+      const totalPages = Math.ceil(total / pageSize);
+      if (page < totalPages) {
+        setState({ page: page + 1 });
+        doFetch();
+        window.scrollTo({ top: 0, behavior: "smooth" });
+        setVoiceStatus("Next page.");
+      } else {
+        setVoiceStatus("Already on the last page.");
+      }
+    },
+    "previous page": () => {
+      if (state.page > 1) {
+        setState({ page: state.page - 1 });
+        doFetch();
+        window.scrollTo({ top: 0, behavior: "smooth" });
+        setVoiceStatus("Previous page.");
+      } else {
+        setVoiceStatus("Already on the first page.");
+      }
+    },
+    "go back": () => {
+      if (state.page > 1) {
+        setState({ page: state.page - 1 });
+        doFetch();
+        window.scrollTo({ top: 0, behavior: "smooth" });
+        setVoiceStatus("Previous page.");
+      } else {
+        setVoiceStatus("Already on the first page.");
+      }
+    },
+    "first page": () => {
+      setState({ page: 1 });
+      doFetch();
+      window.scrollTo({ top: 0, behavior: "smooth" });
+      setVoiceStatus("First page.");
+    },
+
+    // ── View ────────────────────────────────────────
+    "grid view":  () => { setState({ view: "grid" }); setVoiceStatus("Grid view."); },
+    "list view":  () => { setState({ view: "list" }); setVoiceStatus("List view."); },
+    "show grid":  () => { setState({ view: "grid" }); setVoiceStatus("Grid view."); },
+    "show list":  () => { setState({ view: "list" }); setVoiceStatus("List view."); },
+
+    // ── Scroll ──────────────────────────────────────
+    "scroll down": () => { window.scrollBy({ top: 400, behavior: "smooth" }); setVoiceStatus("Scrolling down."); },
+    "scroll up":   () => { window.scrollBy({ top: -400, behavior: "smooth" }); setVoiceStatus("Scrolling up."); },
+    "go to top":   () => { window.scrollTo({ top: 0, behavior: "smooth" }); setVoiceStatus("Going to top."); },
+    "go to bottom":() => { window.scrollTo({ top: document.body.scrollHeight, behavior: "smooth" }); setVoiceStatus("Going to bottom."); },
+
+    // ── Modal ───────────────────────────────────────
+    "close":              closeModal,
+    "close modal":        closeModal,
+    "go back":            closeModal,
     "more like this":         runMoreLikeThis,
     "show me more like this": runMoreLikeThis,
-    "*term":                  runVoiceSearch,
+
+    // ── Open results by number ───────────────────────
+    "open first result":  () => openResultByIndex(0),
+    "open second result": () => openResultByIndex(1),
+    "open third result":  () => openResultByIndex(2),
+    "open fourth result": () => openResultByIndex(3),
+    "open fifth result":  () => openResultByIndex(4),
+    "open result one":    () => openResultByIndex(0),
+    "open result two":    () => openResultByIndex(1),
+    "open result three":  () => openResultByIndex(2),
+    "open result four":   () => openResultByIndex(3),
+    "open result five":   () => openResultByIndex(4),
+
+    // ── Page size ────────────────────────────────────
+    "show fifteen results": () => { setState({ pageSize: 15, page: 1 }); doFetch(); setVoiceStatus("Showing 15 results."); },
+    "show fifty results":   () => { setState({ pageSize: 50, page: 1 }); doFetch(); setVoiceStatus("Showing 50 results."); },
+
+    // ── Fallback ─────────────────────────────────────
+    "*term": runVoiceSearch,
   });
 
+  const startListening = () => {
+    setVoiceStatus("Listening…");
+    annyang.start({ autoRestart: false, continuous: false });
+  };
+
   annyang.addCallback("start", () => {
-    micBtn.classList.add("is-listening");
+    if (micBtn) micBtn.classList.add("is-listening");
+    if (interactBtn) interactBtn.classList.add("is-listening");
     setVoiceStatus("Listening…");
   });
 
   annyang.addCallback("end", () => {
-    micBtn.classList.remove("is-listening");
+    if (micBtn) micBtn.classList.remove("is-listening");
+    if (interactBtn) interactBtn.classList.remove("is-listening");
     setTimeout(() => {
       const status = document.getElementById("voice-status")?.textContent;
-      if (status && !status.includes("Searching")) setVoiceStatus("Mic stopped.");
+      if (status && !status.includes("Searching") && !status.includes("page") && !status.includes("view") && !status.includes("Finding")) {
+        setVoiceStatus("Done. Click to speak again.");
+      }
     }, 500);
   });
 
   annyang.addCallback("error", () => {
-    micBtn.classList.remove("is-listening");
+    if (micBtn) micBtn.classList.remove("is-listening");
+    if (interactBtn) interactBtn.classList.remove("is-listening");
     setVoiceStatus("Mic error. Check browser permission.");
   });
 
   annyang.addCallback("resultNoMatch", () => {
-    micBtn.classList.remove("is-listening");
-    setVoiceStatus("Didn't catch that.");
+    if (micBtn) micBtn.classList.remove("is-listening");
+    if (interactBtn) interactBtn.classList.remove("is-listening");
+    setVoiceStatus("Didn't catch that. Try again.");
   });
 
-  micBtn.addEventListener("click", () => {
-    setVoiceStatus("Starting mic…");
-    annyang.start({ autoRestart: false, continuous: false });
-  });
+  if (micBtn) micBtn.addEventListener("click", startListening);
+  if (interactBtn) interactBtn.addEventListener("click", startListening);
+};
+function openResultByIndex(index) {
+  const { results } = state;
+  if (!results.length) { setVoiceStatus("No results to open."); return; }
+  if (index >= results.length) { setVoiceStatus(`Only ${results.length} results visible.`); return; }
+  openModal(results[index].systemNumber);
+  setVoiceStatus(`Opening result ${index + 1}.`);
 }
