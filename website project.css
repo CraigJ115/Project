@@ -12,21 +12,30 @@ body {
   padding: 20px;
 }
 
-/* Nav */
 .main-nav {
-  background: #C4D1E6;
-  color: #111;
+  background: #003b49;
+  color: #d0d3d4;
 }
 
-.nav-inner {
-  display: flex;
-  align-items: center;
-  padding: 10px 20px;
+.nav-links a {
+  color: #d0d3d4;
+  text-decoration: none;
+}
+
+.nav-links a:hover {
+  color: #ffffff;
+}
+
+.nav-links a.active {
+  color: #ffffff;
+  border-bottom: 2px solid #d0d3d4;
+  padding-bottom: 2px;
 }
 
 .nav-logo-text {
   font-weight: bold;
   margin-right: 20px;
+  color: #d0d3d4;
 }
 
 .nav-links {
@@ -42,31 +51,21 @@ body {
 
 /* Search bar */
 .main-search-bar {
-  background: #C4D1E6;
+  background: #d0d3d4;
   padding: 15px;
-}
-
-.search-bar {
-  display: flex;
-  max-width: 600px;
-}
-
-.search-bar input {
-  flex: 1;
-  padding: 10px;
 }
 
 .btn-search-go {
   padding: 10px;
-  background: #333;
-  color: white;
+  background: #003b49;
+  color: #d0d3d4;
   border: none;
 }
 
 .btn-voice-interact {
   padding: 10px 15px;
-  background: #333;
-  color: white;
+  background: #003b49;
+  color: #d0d3d4;
   border: none;
   font-size: 14px;
   cursor: pointer;
@@ -74,7 +73,7 @@ body {
 }
 
 .btn-voice-interact:hover {
-  background: #555;
+  background: #005468;
 }
 
 /* Toolbar */
@@ -252,8 +251,8 @@ body {
 }
 
 .welcome-modal-close {
-  background: #333;
-  color: white;
+  background: #003b49;
+  color: #d0d3d4;
   border: none;
   padding: 10px 20px;
   font-size: 14px;
