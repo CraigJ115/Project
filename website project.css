@@ -148,6 +148,7 @@ body {
   inset: 0;
   background: rgba(0,0,0,0.7);
   overflow: auto;
+  z-index: 1000;
 }
 
 .modal {
@@ -276,4 +277,54 @@ body {
 
 .welcome-modal-close:hover {
   background: #005468;
+}
+
+/* Recommendations modal */
+.rec-modal {
+  max-width: 860px;
+  max-height: 80vh;
+  overflow-y: auto;
+}
+
+.rec-subtitle {
+  color: #555;
+  font-size: 14px;
+  margin: 0 0 16px;
+}
+
+.rec-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 14px;
+  margin-top: 12px;
+}
+
+.rec-empty {
+  color: #666;
+  font-style: italic;
+  padding: 1rem 0;
+}
+
+/* Card number badge */
+.card-img-wrap {
+  position: relative;
+}
+
+.card-number {
+  position: absolute;
+  top: 6px;
+  left: 6px;
+  z-index: 2;
+  background: #003b49;
+  color: #fff;
+  font-size: 12px;
+  font-weight: bold;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+  pointer-events: none;
 }

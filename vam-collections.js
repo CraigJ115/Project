@@ -16,7 +16,7 @@ let state = {
   inputVal: "car",
   query: "car",
   page: 1,
-  pageSize: 15,
+  pageSize: 10,
   view: "grid",
   results: [],
   total: 0,
@@ -28,6 +28,10 @@ let state = {
   similarItems: [],
   similarLoading: false,
   showSimilarItems: false,
+  viewHistory: [],
+  showRecommendations: false,
+  recommendations: [],
+  recommendationsLoading: false,
 };
 
 function setState(patch) {
@@ -65,7 +69,18 @@ async function openModal(id) {
   });
   try {
     const data = await fetchData(`https://api.vam.ac.uk/v2/museumobject/${id}`);
-    setState({ modalData: data.record, modalLoading: false });
+    const record = data.record;
+    const entry = {
+      id,
+      title: record.titles?.[0]?.title || record._primaryTitle || "Untitled",
+      objectType: record.objectType || "",
+      category: record.categories?.[0]?.text || "",
+    };
+    const alreadySeen = state.viewHistory.some((h) => h.id === id);
+    if (!alreadySeen) {
+      state = { ...state, viewHistory: [...state.viewHistory, entry] };
+    }
+    setState({ modalData: record, modalLoading: false });
   } catch {
     setState({ modalLoading: false, similarLoading: false });
   }
@@ -93,6 +108,87 @@ async function fetchSimilarItems(modalData) {
   } catch {
     setState({ similarLoading: false });
   }
+}
+
+// build recommendations from view history
+async function fetchRecommendations() {
+  const { viewHistory } = state;
+  if (!viewHistory.length) {
+    setState({ recommendationsLoading: false, recommendations: [] });
+    return;
+  }
+
+  // tally up the types and categories seen
+  const tally = {};
+  viewHistory.forEach(({ objectType, category }) => {
+    [objectType, category].filter(Boolean).forEach((term) => {
+      tally[term] = (tally[term] || 0) + 1;
+    });
+  });
+
+  // pick the top 3 most-seen terms and search for each
+  const topTerms = Object.entries(tally)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 3)
+    .map(([term]) => term);
+
+  try {
+    const results = await Promise.all(
+      topTerms.map((term) =>
+        fetchData(`${BASE_URL}?${new URLSearchParams({ q: term, page_size: 4 })}`)
+          .then((d) => d.records || [])
+          .catch(() => [])
+      )
+    );
+    const seenIds = new Set(viewHistory.map((h) => h.id));
+    const flat = results.flat().filter((r) => !seenIds.has(r.systemNumber));
+    const unique = [...new Map(flat.map((r) => [r.systemNumber, r])).values()].slice(0, 12);
+    setState({ recommendations: unique, recommendationsLoading: false });
+  } catch {
+    setState({ recommendationsLoading: false });
+  }
+}
+
+function showRecommendationsPanel() {
+  const { viewHistory } = state;
+  if (!viewHistory.length) {
+    setVoiceStatus("View some items first and I'll recommend similar ones.");
+    return;
+  }
+  setState({ showRecommendations: true, recommendationsLoading: true, recommendations: [] });
+  fetchRecommendations();
+}
+
+function makeRecommendationsModal() {
+  const { showRecommendations, recommendations, recommendationsLoading, viewHistory } = state;
+  if (!showRecommendations) return "";
+
+  let body = "";
+  if (!viewHistory.length) {
+    body = `<p class="rec-empty">Browse some items first and I'll suggest similar ones.</p>`;
+  } else if (recommendationsLoading) {
+    body = `<div style="padding:2rem;display:flex;align-items:center;gap:1rem"><div class="spinner"></div><span>Finding recommendations…</span></div>`;
+  } else if (!recommendations.length) {
+    body = `<p class="rec-empty">No recommendations found right now — try viewing more items.</p>`;
+  } else {
+    body = `<div class="rec-grid">${recommendations.map(makeSimilarCard).join("")}</div>`;
+  }
+
+  const basedOn = viewHistory
+    .slice(-3)
+    .map((h) => escapeHTML(h.title.length > 25 ? h.title.substring(0, 22) + "…" : h.title))
+    .join(", ");
+
+  return `
+    <div class="welcome-modal-backdrop" id="rec-backdrop">
+      <div class="welcome-modal rec-modal">
+        <button class="welcome-modal-close" id="btn-rec-close" style="float:right">✕ Close</button>
+        <h1>Recommended for You</h1>
+        <p class="rec-subtitle">Based on items you've viewed: <em>${basedOn}</em></p>
+        ${body}
+      </div>
+    </div>
+  `;
 }
 
 // stop random html chaos
@@ -131,7 +227,7 @@ function locationIcon() {
   return `<svg width="10" height="13" viewBox="0 0 10 13" fill="currentColor"><path d="M5 0C2.24 0 0 2.24 0 5c0 3.75 5 8 5 8s5-4.25 5-8c0-2.76-2.24-5-5-5zm0 6.75A1.75 1.75 0 1 1 5 3.25a1.75 1.75 0 0 1 0 3.5z"/></svg>`;
 }
 
-function makeGridCard(item) {
+function makeGridCard(item, index) {
   const imgId = item._primaryImageId;
   const title = item._primaryTitle || "Untitled";
   const makerName = item._primaryMaker?.name || "";
@@ -140,7 +236,10 @@ function makeGridCard(item) {
   const onDisplay = item.onDisplay;
   return `
     <div class="card-grid" data-id="${item.systemNumber}">
-      <div class="card-img-wrap">${makeImg(imgId, "200", title)}</div>
+      <div class="card-img-wrap">
+        <span class="card-number">${index + 1}</span>
+        ${makeImg(imgId, "200", title)}
+      </div>
       <div class="card-body">
         <div class="card-title">${escapeHTML(title)}</div>
         ${makerName ? `<div class="card-maker">${escapeHTML(makerName)}</div>` : ""}
@@ -152,7 +251,7 @@ function makeGridCard(item) {
   `;
 }
 
-function makeListCard(item) {
+function makeListCard(item, index) {
   const imgId = item._primaryImageId;
   const title = item._primaryTitle || "Untitled";
   const makerName = item._primaryMaker?.name || "";
@@ -161,7 +260,10 @@ function makeListCard(item) {
   const onDisplay = item.onDisplay;
   return `
     <div class="card-list" data-id="${item.systemNumber}">
-      <div class="card-list-thumb">${makeImg(imgId, "100", title)}</div>
+      <div class="card-list-thumb" style="position:relative">
+        <span class="card-number">${index + 1}</span>
+        ${makeImg(imgId, "100", title)}
+      </div>
       <div class="card-list-info">
         <div class="card-title">${escapeHTML(title)}</div>
         ${makerName ? `<div class="card-maker">${escapeHTML(makerName)}</div>` : ""}
@@ -298,7 +400,7 @@ function render() {
       resultsEl.innerHTML = `<div class="state-center"><p style="font-size:16px;margin-bottom:6px">No results found</p><p>Try searching for something else.</p></div>`;
     } else {
       const wrapperClass = view === "grid" ? "results-grid" : "results-list";
-      resultsEl.innerHTML = `<div class="${wrapperClass}">${results.map((item) => (view === "grid" ? makeGridCard(item) : makeListCard(item))).join("")}</div>`;
+      resultsEl.innerHTML = `<div class="${wrapperClass}">${results.map((item, i) => (view === "grid" ? makeGridCard(item, i) : makeListCard(item, i))).join("")}</div>`;
     }
   }
 
@@ -311,6 +413,9 @@ function render() {
     modalRoot.innerHTML = makeModal();
     if (selectedId) document.body.style.overflow = "hidden";
   }
+
+  const recRoot = document.getElementById("rec-modal-root");
+  if (recRoot) recRoot.innerHTML = makeRecommendationsModal();
 
   attachEventsAgain();
 }
@@ -337,6 +442,19 @@ function attachEventsAgain() {
   const closeBtn = document.getElementById("btn-modal-close");
   if (closeBtn) closeBtn.addEventListener("click", closeModal);
 
+  const recBackdrop = document.getElementById("rec-backdrop");
+  if (recBackdrop) recBackdrop.addEventListener("click", (e) => {
+    if (e.target === recBackdrop) setState({ showRecommendations: false });
+  });
+  const recCloseBtn = document.getElementById("btn-rec-close");
+  if (recCloseBtn) recCloseBtn.addEventListener("click", () => setState({ showRecommendations: false }));
+  document.querySelectorAll(".rec-grid [data-id]").forEach((el) => {
+    el.addEventListener("click", () => {
+      setState({ showRecommendations: false });
+      openModal(el.dataset.id);
+    });
+  });
+
   const moreLikeBtn = document.getElementById("btn-more-like-this");
   if (moreLikeBtn) moreLikeBtn.addEventListener("click", runMoreLikeThis);
 }
@@ -351,7 +469,17 @@ document.addEventListener("DOMContentLoaded", () => {
   const searchBtn = document.getElementById("btn-search-go");
 
   searchInput.addEventListener("keydown", (e) => {
-    if (e.key === "Enter") { setState({ query: e.target.value, page: 1 }); loadResults(); }
+    if (e.key === "Enter") {
+      const val = e.target.value.trim().toLowerCase();
+      if (val === "show me recommendations" || val === "recommendations" || val === "show recommendations") {
+        searchInput.value = "";
+        state = { ...state, inputVal: "" };
+        showRecommendationsPanel();
+        return;
+      }
+      setState({ query: e.target.value, page: 1 });
+      loadResults();
+    }
   });
 
   searchInput.addEventListener("input", (e) => {
@@ -359,6 +487,14 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 
   searchBtn.addEventListener("click", () => {
+    const val = state.inputVal.trim().toLowerCase();
+    if (val === "show me recommendations" || val === "recommendations" || val === "show recommendations") {
+      const input = document.getElementById("search-input");
+      if (input) input.value = "";
+      state = { ...state, inputVal: "" };
+      showRecommendationsPanel();
+      return;
+    }
     setState({ query: state.inputVal, page: 1 });
     loadResults();
   });
@@ -377,7 +513,7 @@ function showWelcomeModal() {
 
         <h2>How to Use:</h2>
         <ul>
-          <li><strong>Search:</strong> Type or say "search for [item]" to find objects in the collection</li>
+          <li><strong>Search:</strong> Type in the box or say "search for [item]" to find objects</li>
           <li><strong>Voice Control:</strong> Click "Interact with voice" to use voice commands</li>
           <li><strong>View Modes:</strong> Switch between grid and list views</li>
           <li><strong>Item Details:</strong> Click any item to see full details and similar pieces</li>
@@ -389,9 +525,10 @@ function showWelcomeModal() {
           <li><strong>Scrolling:</strong> "scroll down", "scroll up", "go to top", "go to bottom"</li>
           <li><strong>Navigation:</strong> "next page", "previous page", "first page"</li>
           <li><strong>Views:</strong> "grid view", "list view"</li>
-          <li><strong>Results:</strong> "open first result", "open second result", etc.</li>
+          <li><strong>Results:</strong> "select image 1" through "select image 10" (or say the number word)</li>
           <li><strong>Modal:</strong> "close", "more like this"</li>
-          <li><strong>Search:</strong> "search for [item]", "find [item]", "show me [item]"</li>
+          <li><strong>Search:</strong> "search for [item]"</li>
+          <li><strong>Recommendations:</strong> say "show me recommendations" to see items based on your history</li>
           <li><strong>Help:</strong> say "help" to reopen this screen</li>
         </ul>
 
@@ -439,6 +576,7 @@ function setVoiceStatus(message) {
 function runVoiceSearch(term) {
   const cleanTerm = (term || "").trim().toLowerCase();
   if (!cleanTerm) { setVoiceStatus("Didn't catch that."); return; }
+  if (cleanTerm.includes("recommendation")) { showRecommendationsPanel(); return; }
   const searchTerm = synonyms[cleanTerm] || term;
   const input = document.getElementById("search-input");
   if (input) input.value = searchTerm;
@@ -467,6 +605,34 @@ function openResultByIndex(index) {
   setVoiceStatus(`Opening result ${index + 1}`);
 }
 
+function goNextPage() {
+  const { page, total, pageSize } = state;
+  const totalPages = Math.ceil(total / pageSize);
+  if (page < totalPages) {
+    setState({ page: page + 1 }); loadResults();
+    window.scrollTo({ top: 0, behavior: "smooth" }); setVoiceStatus("Next page.");
+  } else { setVoiceStatus("Already on the last page."); }
+}
+
+function goPrevPage() {
+  if (state.page > 1) {
+    setState({ page: state.page - 1 }); loadResults();
+    window.scrollTo({ top: 0, behavior: "smooth" }); setVoiceStatus("Previous page.");
+  } else { setVoiceStatus("Already on the first page."); }
+}
+
+const NUMBER_WORDS = {
+  one:1, two:2, three:3, four:4, five:5,
+  six:6, seven:7, eight:8, nine:9, ten:10,
+};
+
+function parseSpokenNumber(str) {
+  const clean = (str || "").trim().toLowerCase();
+  if (NUMBER_WORDS[clean]) return NUMBER_WORDS[clean];
+  const n = parseInt(clean, 10);
+  return isNaN(n) ? null : n;
+}
+
 function initVoice() {
   const micBtn = document.getElementById("btn-mic");
   const interactBtn = document.getElementById("btn-voice-interact");
@@ -481,20 +647,17 @@ function initVoice() {
   annyang.removeCommands();
 
   const commands = {
-    "scroll down": () => {
-      if (state.selectedId) {
-        const modal = document.querySelector(".modal");
-        if (modal) { modal.scrollBy({ top: 400, behavior: "smooth" }); setVoiceStatus("Scrolling modal down."); }
-      } else {
-        window.scrollBy({ top: 400, behavior: "smooth" }); setVoiceStatus("Scrolling down.");
-      }
-    },
-    "scroll up": () => {
-      if (state.selectedId) {
-        const modal = document.querySelector(".modal");
-        if (modal) { modal.scrollBy({ top: -400, behavior: "smooth" }); setVoiceStatus("Scrolling modal up."); }
-      } else {
-        window.scrollBy({ top: -400, behavior: "smooth" }); setVoiceStatus("Scrolling up.");
+    "scroll *direction": (direction) => {
+      const d = (direction || "").trim().toLowerCase();
+      const modal = state.selectedId ? document.querySelector(".modal") : null;
+      if (d.includes("down")) {
+        if (modal) modal.scrollBy({ top: 400, behavior: "smooth" });
+        else window.scrollBy({ top: 400, behavior: "smooth" });
+        setVoiceStatus("Scrolling down.");
+      } else if (d.includes("up")) {
+        if (modal) modal.scrollBy({ top: -400, behavior: "smooth" });
+        else window.scrollBy({ top: -400, behavior: "smooth" });
+        setVoiceStatus("Scrolling up.");
       }
     },
     "go to top": () => {
@@ -513,56 +676,7 @@ function initVoice() {
         window.scrollTo({ top: document.body.scrollHeight, behavior: "smooth" }); setVoiceStatus("Going to bottom.");
       }
     },
-    "next page": () => {
-      const { page, total, pageSize } = state;
-      const totalPages = Math.ceil(total / pageSize);
-      if (page < totalPages) {
-        setState({ page: page + 1 }); loadResults();
-        window.scrollTo({ top: 0, behavior: "smooth" }); setVoiceStatus("Next page.");
-      } else { setVoiceStatus("Already on the last page."); }
-    },
-    "previous page": () => {
-      if (state.page > 1) {
-        setState({ page: state.page - 1 }); loadResults();
-        window.scrollTo({ top: 0, behavior: "smooth" }); setVoiceStatus("Previous page.");
-      } else { setVoiceStatus("Already on the first page."); }
-    },
-    "go back": () => {
-      if (state.selectedId) { closeModal(); setVoiceStatus("Closed."); }
-      else if (state.page > 1) {
-        setState({ page: state.page - 1 }); loadResults();
-        window.scrollTo({ top: 0, behavior: "smooth" }); setVoiceStatus("Previous page.");
-      } else { setVoiceStatus("Already on the first page."); }
-    },
-    "first page": () => {
-      setState({ page: 1 }); loadResults();
-      window.scrollTo({ top: 0, behavior: "smooth" }); setVoiceStatus("Back to page one.");
-    },
-    "grid view":  () => { setState({ view: "grid" }); setVoiceStatus("Grid view."); },
-    "list view":  () => { setState({ view: "list" }); setVoiceStatus("List view."); },
-    "show grid":  () => { setState({ view: "grid" }); setVoiceStatus("Grid view."); },
-    "show list":  () => { setState({ view: "list" }); setVoiceStatus("List view."); },
-    "close":       closeModal,
-    "close modal": closeModal,
-    "more like this":         runMoreLikeThis,
-    "show me more like this": runMoreLikeThis,
-    "show me more":           runMoreLikeThis,
-    "help":                   showWelcomeModal,
-    "open first result":  () => openResultByIndex(0),
-    "open second result": () => openResultByIndex(1),
-    "open third result":  () => openResultByIndex(2),
-    "open fourth result": () => openResultByIndex(3),
-    "open fifth result":  () => openResultByIndex(4),
-    "open result one":    () => openResultByIndex(0),
-    "open result two":    () => openResultByIndex(1),
-    "open result three":  () => openResultByIndex(2),
-    "open result four":   () => openResultByIndex(3),
-    "open result five":   () => openResultByIndex(4),
     "search for *term": runVoiceSearch,
-    "find *term":       runVoiceSearch,
-    "look for *term":   runVoiceSearch,
-    "search *term":     runVoiceSearch,
-    "*term":            runVoiceSearch,
   };
 
   annyang.addCommands(commands);
@@ -607,7 +721,24 @@ function initVoice() {
     }
   });
 
-  annyang.addCallback("resultNoMatch", () => {
+  annyang.addCallback("resultNoMatch", (phrases) => {
+    const t = ((phrases && phrases[0]) || "").toLowerCase().trim();
+
+    if (t.includes("next page"))                              { goNextPage(); return; }
+    if (t.includes("previous page") || t.includes("prev page") || t.includes("go back")) { goPrevPage(); return; }
+    if (t.includes("first page"))                             { setState({ page: 1 }); loadResults(); window.scrollTo({ top: 0, behavior: "smooth" }); setVoiceStatus("Back to page one."); return; }
+    if (t.includes("scroll down"))                            { const m = state.selectedId ? document.querySelector(".modal") : null; if (m) m.scrollBy({ top: 400, behavior: "smooth" }); else window.scrollBy({ top: 400, behavior: "smooth" }); setVoiceStatus("Scrolling down."); return; }
+    if (t.includes("scroll up"))                              { const m = state.selectedId ? document.querySelector(".modal") : null; if (m) m.scrollBy({ top: -400, behavior: "smooth" }); else window.scrollBy({ top: -400, behavior: "smooth" }); setVoiceStatus("Scrolling up."); return; }
+    if (t.includes("close"))                                  { if (state.selectedId) { closeModal(); setVoiceStatus("Closed."); } return; }
+    if (t.includes("recommendation"))                         { showRecommendationsPanel(); return; }
+    if (t.includes("more like") || (t.includes("show") && t.includes("more"))) { runMoreLikeThis(); return; }
+    if (t.includes("grid view") || t.includes("show grid"))  { setState({ view: "grid" }); setVoiceStatus("Grid view."); return; }
+    if (t.includes("list view") || t.includes("show list"))  { setState({ view: "list" }); setVoiceStatus("List view."); return; }
+    if (t.includes("help"))                                   { showWelcomeModal(); return; }
+
+    const selectMatch = t.match(/select image\s+(\w+)/);
+    if (selectMatch) { const idx = parseSpokenNumber(selectMatch[1]); if (idx !== null) { openResultByIndex(idx - 1); return; } }
+
     setVoiceStatus("Didn't catch that — still listening…");
   });
 
