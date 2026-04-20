@@ -2,7 +2,6 @@
 const BASE_URL = "https://api.vam.ac.uk/v2/objects/search";
 const makeImgUrl = (id, width) =>
   `https://framemark.vam.ac.uk/collections/${id}/full/${width},/0/default.jpg`;
-const makeItemUrl = (sysNum) => `https://collections.vam.ac.uk/item/${sysNum}/`;
 
 // grab data from the V&A API
 async function fetchData(url) {
@@ -17,7 +16,6 @@ let state = {
   query: "car",
   page: 1,
   pageSize: 10,
-  view: "grid",
   results: [],
   total: 0,
   loading: true,
@@ -118,7 +116,6 @@ async function fetchRecommendations() {
     return;
   }
 
-  // tally up the types and categories seen
   const tally = {};
   viewHistory.forEach(({ objectType, category }) => {
     [objectType, category].filter(Boolean).forEach((term) => {
@@ -126,7 +123,6 @@ async function fetchRecommendations() {
     });
   });
 
-  // pick the top 3 most-seen terms and search for each
   const topTerms = Object.entries(tally)
     .sort((a, b) => b[1] - a[1])
     .slice(0, 3)
@@ -251,30 +247,6 @@ function makeGridCard(item, index) {
   `;
 }
 
-function makeListCard(item, index) {
-  const imgId = item._primaryImageId;
-  const title = item._primaryTitle || "Untitled";
-  const makerName = item._primaryMaker?.name || "";
-  const date = item._primaryDate || "";
-  const place = item._currentLocation?.displayName || "";
-  const onDisplay = item.onDisplay;
-  return `
-    <div class="card-list" data-id="${item.systemNumber}">
-      <div class="card-list-thumb" style="position:relative">
-        <span class="card-number">${index + 1}</span>
-        ${makeImg(imgId, "100", title)}
-      </div>
-      <div class="card-list-info">
-        <div class="card-title">${escapeHTML(title)}</div>
-        ${makerName ? `<div class="card-maker">${escapeHTML(makerName)}</div>` : ""}
-        ${date ? `<div class="card-date">${escapeHTML(date)}</div>` : ""}
-        ${place ? `<div class="card-location">${locationIcon()} ${escapeHTML(place)}</div>` : ""}
-        <div class="${onDisplay ? "on-display-label yes" : "not-on-display"}">${onDisplay ? "On display" : "Not on display"}</div>
-      </div>
-    </div>
-  `;
-}
-
 function makePagination() {
   const { page, total, pageSize } = state;
   const totalPages = Math.ceil(total / pageSize);
@@ -366,15 +338,10 @@ function makeModal() {
 
 // main render
 function render() {
-  const { inputVal, query, view, results, total, loading, error, selectedId } = state;
+  const { inputVal, query, results, total, loading, error, selectedId } = state;
 
   const input = document.getElementById("search-input");
   if (input && document.activeElement !== input) input.value = inputVal;
-
-  ["grid", "list"].forEach((mode) => {
-    const btn = document.getElementById(`btn-view-${mode}`);
-    if (btn) btn.classList.toggle("active", view === mode);
-  });
 
   const countEl = document.getElementById("result-count");
   const queryEl = document.getElementById("result-query");
@@ -399,8 +366,7 @@ function render() {
     } else if (!results.length) {
       resultsEl.innerHTML = `<div class="state-center"><p style="font-size:16px;margin-bottom:6px">No results found</p><p>Try searching for something else.</p></div>`;
     } else {
-      const wrapperClass = view === "grid" ? "results-grid" : "results-list";
-      resultsEl.innerHTML = `<div class="${wrapperClass}">${results.map((item, i) => (view === "grid" ? makeGridCard(item, i) : makeListCard(item, i))).join("")}</div>`;
+      resultsEl.innerHTML = `<div class="results-grid">${results.map((item, i) => makeGridCard(item, i)).join("")}</div>`;
     }
   }
 
@@ -446,8 +412,10 @@ function attachEventsAgain() {
   if (recBackdrop) recBackdrop.addEventListener("click", (e) => {
     if (e.target === recBackdrop) setState({ showRecommendations: false });
   });
+
   const recCloseBtn = document.getElementById("btn-rec-close");
   if (recCloseBtn) recCloseBtn.addEventListener("click", () => setState({ showRecommendations: false }));
+
   document.querySelectorAll(".rec-grid [data-id]").forEach((el) => {
     el.addEventListener("click", () => {
       setState({ showRecommendations: false });
@@ -471,7 +439,7 @@ document.addEventListener("DOMContentLoaded", () => {
   searchInput.addEventListener("keydown", (e) => {
     if (e.key === "Enter") {
       const val = e.target.value.trim().toLowerCase();
-      if (val === "show me recommendations" || val === "recommendations" || val === "show recommendations") {
+      if (val.includes("recommendation")) {
         searchInput.value = "";
         state = { ...state, inputVal: "" };
         showRecommendationsPanel();
@@ -488,7 +456,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
   searchBtn.addEventListener("click", () => {
     const val = state.inputVal.trim().toLowerCase();
-    if (val === "show me recommendations" || val === "recommendations" || val === "show recommendations") {
+    if (val.includes("recommendation")) {
       const input = document.getElementById("search-input");
       if (input) input.value = "";
       state = { ...state, inputVal: "" };
@@ -515,7 +483,6 @@ function showWelcomeModal() {
         <ul>
           <li><strong>Search:</strong> Type in the box or say "search for [item]" to find objects</li>
           <li><strong>Voice Control:</strong> Click "Interact with voice" to use voice commands</li>
-          <li><strong>View Modes:</strong> Switch between grid and list views</li>
           <li><strong>Item Details:</strong> Click any item to see full details and similar pieces</li>
           <li><strong>Navigate:</strong> Use pagination or voice commands like "next page" and "previous page"</li>
         </ul>
@@ -524,8 +491,7 @@ function showWelcomeModal() {
         <ul>
           <li><strong>Scrolling:</strong> "scroll down", "scroll up", "go to top", "go to bottom"</li>
           <li><strong>Navigation:</strong> "next page", "previous page", "first page"</li>
-          <li><strong>Views:</strong> "grid view", "list view"</li>
-          <li><strong>Results:</strong> "select image 1" through "select image 10" (or say the number word)</li>
+          <li><strong>Results:</strong> "select image 1" through "select image 10"</li>
           <li><strong>Modal:</strong> "close", "more like this"</li>
           <li><strong>Search:</strong> "search for [item]"</li>
           <li><strong>Recommendations:</strong> say "show me recommendations" to see items based on your history</li>
@@ -732,8 +698,6 @@ function initVoice() {
     if (t.includes("close"))                                  { if (state.selectedId) { closeModal(); setVoiceStatus("Closed."); } return; }
     if (t.includes("recommendation"))                         { showRecommendationsPanel(); return; }
     if (t.includes("more like") || (t.includes("show") && t.includes("more"))) { runMoreLikeThis(); return; }
-    if (t.includes("grid view") || t.includes("show grid"))  { setState({ view: "grid" }); setVoiceStatus("Grid view."); return; }
-    if (t.includes("list view") || t.includes("show list"))  { setState({ view: "list" }); setVoiceStatus("List view."); return; }
     if (t.includes("help"))                                   { showWelcomeModal(); return; }
 
     const selectMatch = t.match(/select image\s+(\w+)/);
