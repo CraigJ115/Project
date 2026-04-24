@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>What's On · V&amp;A</title>
+  <link rel="stylesheet" href="website project.css" />
+  <style>
+    .page-hero {
+      background: #003b49;
+      color: #d0d3d4;
+      padding: 60px 20px;
+      text-align: center;
+    }
+    .page-hero h1 {
+      font-family: Georgia, serif;
+      font-size: 42px;
+      margin: 0 0 12px;
+      color: #fff;
+    }
+    .page-hero p {
+      font-size: 16px;
+      max-width: 600px;
+      margin: 0 auto;
+      color: #d0d3d4;
+      line-height: 1.6;
+    }
+    .page-section {
+      max-width: 1100px;
+      margin: 40px auto;
+      padding: 0 20px;
+    }
+    .page-section h2 {
+      font-family: Georgia, serif;
+      font-size: 26px;
+      color: #003b49;
+      border-bottom: 2px solid #003b49;
+      padding-bottom: 8px;
+      margin-bottom: 20px;
+    }
+    .event-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+      gap: 20px;
+    }
+    .event-card {
+      background: white;
+      cursor: pointer;
+    }
+    .event-card:hover { box-shadow: 0 2px 8px rgba(0,59,73,0.2); }
+    .event-img {
+      height: 180px;
+      background: #003b49;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #d0d3d4;
+      font-family: Georgia, serif;
+      font-size: 22px;
+      padding: 20px;
+      text-align: center;
+    }
+    .event-img.alt { background: #005468; }
+    .event-img.alt2 { background: #002830; }
+    .event-body { padding: 16px; }
+    .event-tag {
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: #777;
+      margin-bottom: 6px;
+    }
+    .event-title {
+      font-family: Georgia, serif;
+      font-size: 18px;
+      color: #003b49;
+      margin-bottom: 8px;
+    }
+    .event-date {
+      font-size: 13px;
+      color: #555;
+      margin-bottom: 8px;
+    }
+    .event-desc {
+      font-size: 13px;
+      color: #444;
+      line-height: 1.5;
+    }
+    .filter-bar {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 24px;
+      flex-wrap: wrap;
+    }
+    .filter-btn {
+      padding: 8px 16px;
+      border: 2px solid #003b49;
+      background: white;
+      color: #003b49;
+      font-size: 13px;
+      cursor: pointer;
+    }
+    .filter-btn.active {
+      background: #003b49;
+      color: #d0d3d4;
+    }
+    .filter-btn:hover { background: #003b49; color: #d0d3d4; }
+  </style>
+</head>
+<body>
+  <nav class="main-nav">
+    <div class="nav-inner">
+      <a class="nav-logo" href="website project.html">
+        <span class="nav-logo-box">V&amp;A</span>
+        <span class="nav-logo-divider"></span>
+        <span class="nav-logo-text-wrap">
+          <span class="nav-logo-sub">Collections</span>
+        </span>
+      </a>
+      <ul class="nav-links">
+        <li><a href="visit.html">Visit us</a></li>
+        <li><a href="whatson.html" class="active">What's on</a></li>
+        <li><a href="website project.html">Collections</a></li>
+        <li><a href="learn.html">Learn</a></li>
+        <li><a href="join.html">Join &amp; Support</a></li>
+        <li><a href="shop.html">Shop</a></li>
+      </ul>
+    </div>
+  </nav>
+
+  <div class="page-hero">
+    <h1>What's On</h1>
+    <p>Exhibitions, displays, events and courses at the V&A.</p>
+  </div>
+
+  <div class="page-section">
+    <div class="filter-bar">
+      <button class="filter-btn active">All</button>
+      <button class="filter-btn">Exhibitions</button>
+      <button class="filter-btn">Events</button>
+      <button class="filter-btn">Courses</button>
+      <button class="filter-btn">Family</button>
+    </div>
+
+    <h2>Current Exhibitions</h2>
+    <div class="event-grid">
+      <div class="event-card">
+        <div class="event-img">Fashion Through the Ages</div>
+        <div class="event-body">
+          <div class="event-tag">Exhibition</div>
+          <div class="event-title">Fashion Through the Ages</div>
+          <div class="event-date">Until 30 March 2026</div>
+          <div class="event-desc">Five centuries of dress from the V&A's National Collection of Fashion, spanning cultures and continents.</div>
+        </div>
+      </div>
+      <div class="event-card">
+        <div class="event-img alt">Design in Motion</div>
+        <div class="event-body">
+          <div class="event-tag">Exhibition</div>
+          <div class="event-title">Design in Motion</div>
+          <div class="event-date">Until 15 February 2026</div>
+          <div class="event-desc">From the earliest automobiles to concept vehicles of tomorrow — how design shapes the way we move.</div>
+        </div>
+      </div>
+      <div class="event-card">
+        <div class="event-img alt2">The Art of Ceramics</div>
+        <div class="event-body">
+          <div class="event-tag">Exhibition</div>
+          <div class="event-title">The Art of Ceramics</div>
+          <div class="event-date">Until 1 June 2026</div>
+          <div class="event-desc">A survey of the world's most extraordinary ceramic works, from ancient Chinese porcelain to contemporary studio pottery.</div>
+        </div>
+      </div>
+    </div>
+
+    <h2 style="margin-top:40px">Upcoming Events</h2>
+    <div class="event-grid">
+      <div class="event-card">
+        <div class="event-img alt">Friday Late: Creativity</div>
+        <div class="event-body">
+          <div class="event-tag">Event · 18+</div>
+          <div class="event-title">Friday Late: Creativity Unlocked</div>
+          <div class="event-date">Friday 2 May 2026 · 18:30 – 22:00</div>
+          <div class="event-desc">An evening of live performances, workshops and talks celebrating creative practice across disciplines.</div>
+        </div>
+      </div>
+      <div class="event-card">
+        <div class="event-img">Family Workshop: Print Making</div>
+        <div class="event-body">
+          <div class="event-tag">Event · Family</div>
+          <div class="event-title">Family Workshop: Print Making</div>
+          <div class="event-date">Saturday 10 May 2026 · 11:00 – 13:00</div>
+          <div class="event-desc">A hands-on printmaking workshop for families with children aged 5–12. All materials provided.</div>
+        </div>
+      </div>
+      <div class="event-card">
+        <div class="event-img alt2">Jewellery Design Course</div>
+        <div class="event-body">
+          <div class="event-tag">Course · Adults</div>
+          <div class="event-title">Introduction to Jewellery Design</div>
+          <div class="event-date">6 Thursdays from 8 May 2026</div>
+          <div class="event-desc">Learn the fundamentals of jewellery design with expert tutors, inspired by the V&A collection.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>
