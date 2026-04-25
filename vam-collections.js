@@ -482,7 +482,7 @@ function showWelcomeModal() {
         <h2>How to Use:</h2>
         <ul>
           <li><strong>Search:</strong> Type in the box or say "search for [item]" to find objects</li>
-          <li><strong>Voice Control:</strong> Click "Interact with voice" to use voice commands</li>
+          <li><strong>Voice Control:</strong> Say "start voice interaction" or click the button to activate voice commands</li>
           <li><strong>Item Details:</strong> Click any item to see full details and similar pieces</li>
           <li><strong>Navigate:</strong> Use pagination or voice commands like "next page" and "previous page"</li>
         </ul>
@@ -495,6 +495,7 @@ function showWelcomeModal() {
           <li><strong>Modal:</strong> "close", "more like this"</li>
           <li><strong>Search:</strong> "search for [item]"</li>
           <li><strong>Recommendations:</strong> say "show me recommendations" to see items based on your history</li>
+          <li><strong>Navigation:</strong> say "take me to shop", "take me to learn", "take me to visit" etc. to go to another page</li>
           <li><strong>Help:</strong> say "help" to reopen this screen</li>
         </ul>
 
@@ -551,6 +552,32 @@ function runVoiceSearch(term) {
   loadResults();
 }
 
+function navigateToPage(page) {
+  const p = (page || "").trim().toLowerCase().replace(/[^a-z0-9\s']/g, "").trim();
+  const map = {
+    "visit": "visit.html",
+    "visit us": "visit.html",
+    "whats on": "whatson.html",
+    "what's on": "whatson.html",
+    "what is on": "whatson.html",
+    "collections": "website project.html",
+    "explore": "website project.html",
+    "explore the collections": "website project.html",
+    "learn": "learn.html",
+    "join": "join.html",
+    "join and support": "join.html",
+    "support": "join.html",
+    "shop": "shop.html",
+  };
+  const url = map[p];
+  if (url) {
+    setVoiceStatus(`Taking you to ${page}…`);
+    window.location.href = url;
+  } else {
+    setVoiceStatus(`Couldn't find a page called "${page}".`);
+  }
+}
+
 function runMoreLikeThis() {
   const { modalData } = state;
   if (!modalData) { setVoiceStatus("No item is open."); return; }
@@ -600,20 +627,30 @@ function parseSpokenNumber(str) {
 }
 
 function initVoice() {
-  const micBtn = document.getElementById("btn-mic");
   const interactBtn = document.getElementById("btn-voice-interact");
 
   if (!window.annyang) {
-    if (micBtn) micBtn.disabled = true;
     if (interactBtn) interactBtn.disabled = true;
     setVoiceStatus("Voice search unavailable.");
     return;
   }
 
   annyang.removeCommands();
+  let isListening = false;
+
+  function setActive(active) {
+    isListening = active;
+    if (interactBtn) {
+      interactBtn.classList.toggle("is-listening", active);
+      interactBtn.textContent = active ? "🎙 Listening — click to stop" : "Click to interact with voice";
+    }
+    setVoiceStatus(active ? "Listening…" : "");
+  }
 
   const commands = {
+    "start voice interaction": () => { if (!isListening) setActive(true); },
     "scroll *direction": (direction) => {
+      if (!isListening) return;
       const d = (direction || "").trim().toLowerCase();
       const modal = state.selectedId ? document.querySelector(".modal") : null;
       if (d.includes("down")) {
@@ -627,6 +664,7 @@ function initVoice() {
       }
     },
     "go to top": () => {
+      if (!isListening) return;
       if (state.selectedId) {
         const modal = document.querySelector(".modal");
         if (modal) { modal.scrollTo({ top: 0, behavior: "smooth" }); setVoiceStatus("Going to top of modal."); }
@@ -635,6 +673,7 @@ function initVoice() {
       }
     },
     "go to bottom": () => {
+      if (!isListening) return;
       if (state.selectedId) {
         const modal = document.querySelector(".modal");
         if (modal) { modal.scrollTo({ top: modal.scrollHeight, behavior: "smooth" }); setVoiceStatus("Going to bottom of modal."); }
@@ -642,53 +681,30 @@ function initVoice() {
         window.scrollTo({ top: document.body.scrollHeight, behavior: "smooth" }); setVoiceStatus("Going to bottom.");
       }
     },
-    "search for *term": runVoiceSearch,
+    "search for *term": (term) => { if (!isListening) return; runVoiceSearch(term); },
+    "take me to *page": (page) => { if (!isListening) return; navigateToPage(page); },
   };
 
   annyang.addCommands(commands);
 
-  let isListening = false;
-
-  const startListening = () => {
-    if (isListening) {
-      annyang.abort();
-      isListening = false;
-      if (micBtn) micBtn.classList.remove("is-listening");
-      if (interactBtn) {
-        interactBtn.classList.remove("is-listening");
-        interactBtn.textContent = "Click to interact with voice";
-      }
-      setVoiceStatus("Voice off.");
-      return;
-    }
-    isListening = true;
-    if (micBtn) micBtn.classList.add("is-listening");
-    if (interactBtn) {
-      interactBtn.classList.add("is-listening");
-      interactBtn.textContent = "🎙 Listening — click to stop";
-    }
-    setVoiceStatus("Listening…");
-    annyang.start({ autoRestart: true, continuous: true });
-  };
-
   annyang.addCallback("start", () => {
-    setVoiceStatus("Listening…");
+    if (isListening) setVoiceStatus("Listening…");
   });
 
+  // Always restart annyang to keep passive wake-word detection alive
   annyang.addCallback("end", () => {
-    if (isListening) {
-      setTimeout(() => annyang.start({ autoRestart: true, continuous: true }), 300);
-    }
+    setTimeout(() => annyang.start({ autoRestart: true, continuous: true }), 300);
   });
 
   annyang.addCallback("error", () => {
-    if (isListening) {
-      setTimeout(() => annyang.start({ autoRestart: true, continuous: true }), 300);
-    }
+    setTimeout(() => annyang.start({ autoRestart: true, continuous: true }), 300);
   });
 
   annyang.addCallback("resultNoMatch", (phrases) => {
     const t = ((phrases && phrases[0]) || "").toLowerCase().trim();
+
+    if (t.includes("start voice interaction")) { if (!isListening) setActive(true); return; }
+    if (!isListening) return;
 
     if (t.includes("next page"))                              { goNextPage(); return; }
     if (t.includes("previous page") || t.includes("prev page") || t.includes("go back")) { goPrevPage(); return; }
@@ -699,6 +715,7 @@ function initVoice() {
     if (t.includes("recommendation"))                         { showRecommendationsPanel(); return; }
     if (t.includes("more like") || (t.includes("show") && t.includes("more"))) { runMoreLikeThis(); return; }
     if (t.includes("help"))                                   { showWelcomeModal(); return; }
+    if (t.includes("take me to"))                             { navigateToPage(t.replace(/.*take me to\s*/i, "").replace(/[^a-z0-9\s']/g, "").trim()); return; }
 
     const selectMatch = t.match(/select image\s+(\w+)/);
     if (selectMatch) { const idx = parseSpokenNumber(selectMatch[1]); if (idx !== null) { openResultByIndex(idx - 1); return; } }
@@ -706,6 +723,8 @@ function initVoice() {
     setVoiceStatus("Didn't catch that — still listening…");
   });
 
-  if (micBtn) micBtn.addEventListener("click", startListening);
-  if (interactBtn) interactBtn.addEventListener("click", startListening);
+  // Start passive always-on listening for wake phrase
+  annyang.start({ autoRestart: true, continuous: true });
+
+  if (interactBtn) interactBtn.addEventListener("click", () => setActive(!isListening));
 }

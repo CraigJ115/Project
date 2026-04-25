@@ -5,107 +5,6 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>What's On · V&amp;A</title>
   <link rel="stylesheet" href="website project.css" />
-  <style>
-    .page-hero {
-      background: #003b49;
-      color: #d0d3d4;
-      padding: 60px 20px;
-      text-align: center;
-    }
-    .page-hero h1 {
-      font-family: Georgia, serif;
-      font-size: 42px;
-      margin: 0 0 12px;
-      color: #fff;
-    }
-    .page-hero p {
-      font-size: 16px;
-      max-width: 600px;
-      margin: 0 auto;
-      color: #d0d3d4;
-      line-height: 1.6;
-    }
-    .page-section {
-      max-width: 1100px;
-      margin: 40px auto;
-      padding: 0 20px;
-    }
-    .page-section h2 {
-      font-family: Georgia, serif;
-      font-size: 26px;
-      color: #003b49;
-      border-bottom: 2px solid #003b49;
-      padding-bottom: 8px;
-      margin-bottom: 20px;
-    }
-    .event-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-      gap: 20px;
-    }
-    .event-card {
-      background: white;
-      cursor: pointer;
-    }
-    .event-card:hover { box-shadow: 0 2px 8px rgba(0,59,73,0.2); }
-    .event-img {
-      height: 180px;
-      background: #003b49;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      color: #d0d3d4;
-      font-family: Georgia, serif;
-      font-size: 22px;
-      padding: 20px;
-      text-align: center;
-    }
-    .event-img.alt { background: #005468; }
-    .event-img.alt2 { background: #002830; }
-    .event-body { padding: 16px; }
-    .event-tag {
-      font-size: 11px;
-      text-transform: uppercase;
-      letter-spacing: 1px;
-      color: #777;
-      margin-bottom: 6px;
-    }
-    .event-title {
-      font-family: Georgia, serif;
-      font-size: 18px;
-      color: #003b49;
-      margin-bottom: 8px;
-    }
-    .event-date {
-      font-size: 13px;
-      color: #555;
-      margin-bottom: 8px;
-    }
-    .event-desc {
-      font-size: 13px;
-      color: #444;
-      line-height: 1.5;
-    }
-    .filter-bar {
-      display: flex;
-      gap: 10px;
-      margin-bottom: 24px;
-      flex-wrap: wrap;
-    }
-    .filter-btn {
-      padding: 8px 16px;
-      border: 2px solid #003b49;
-      background: white;
-      color: #003b49;
-      font-size: 13px;
-      cursor: pointer;
-    }
-    .filter-btn.active {
-      background: #003b49;
-      color: #d0d3d4;
-    }
-    .filter-btn:hover { background: #003b49; color: #d0d3d4; }
-  </style>
 </head>
 <body>
   <nav class="main-nav">
@@ -132,6 +31,17 @@
     <h1>What's On</h1>
     <p>Exhibitions, displays, events and courses at the V&A.</p>
   </div>
+
+  <div class="main-search-bar">
+    <div class="search-bar-inner">
+      <div class="search-bar-row">
+        <button id="btn-voice-interact" class="btn-voice-interact">Click to interact with voice</button>
+        <button id="btn-show-help" class="btn-help" title="How to use">? Help</button>
+      </div>
+      <span id="voice-status"></span>
+    </div>
+  </div>
+  <div id="help-modal-root"></div>
 
   <div class="page-section">
     <div class="filter-bar">
@@ -173,7 +83,7 @@
       </div>
     </div>
 
-    <h2 style="margin-top:40px">Upcoming Events</h2>
+    <h2 class="section-gap">Upcoming Events</h2>
     <div class="event-grid">
       <div class="event-card">
         <div class="event-img alt">Friday Late: Creativity</div>
@@ -204,5 +114,7 @@
       </div>
     </div>
   </div>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/annyang/2.6.1/annyang.min.js"></script>
+  <script src="voice-nav.js"></script>
 </body>
 </html>
