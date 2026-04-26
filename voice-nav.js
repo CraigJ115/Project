@@ -44,7 +44,7 @@ document.addEventListener("DOMContentLoaded", () => {
     isListening = active;
     if (interactBtn) {
       interactBtn.classList.toggle("is-listening", active);
-      interactBtn.textContent = active ? "🎙 Listening — click to stop" : "Click to interact with voice";
+      interactBtn.textContent = active ? "🎙 Listening — click to stop" : "Voice control";
     }
     setVoiceStatus(active ? "Listening…" : "");
   }

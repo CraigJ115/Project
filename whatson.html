@@ -35,7 +35,7 @@
   <div class="main-search-bar">
     <div class="search-bar-inner">
       <div class="search-bar-row">
-        <button id="btn-voice-interact" class="btn-voice-interact">Click to interact with voice</button>
+        <button id="btn-voice-interact" class="btn-voice-interact">Voice control</button>
         <button id="btn-show-help" class="btn-help" title="How to use">? Help</button>
       </div>
       <span id="voice-status"></span>
@@ -55,7 +55,7 @@
     <h2>Current Exhibitions</h2>
     <div class="event-grid">
       <div class="event-card">
-        <div class="event-img">Fashion Through the Ages</div>
+        <div class="event-img" data-search="fashion dress historical costume"></div>
         <div class="event-body">
           <div class="event-tag">Exhibition</div>
           <div class="event-title">Fashion Through the Ages</div>
@@ -64,7 +64,7 @@
         </div>
       </div>
       <div class="event-card">
-        <div class="event-img alt">Design in Motion</div>
+        <div class="event-img" data-search="automobile vehicle transport design"></div>
         <div class="event-body">
           <div class="event-tag">Exhibition</div>
           <div class="event-title">Design in Motion</div>
@@ -73,7 +73,7 @@
         </div>
       </div>
       <div class="event-card">
-        <div class="event-img alt2">The Art of Ceramics</div>
+        <div class="event-img" data-search="ceramics porcelain stoneware chinese"></div>
         <div class="event-body">
           <div class="event-tag">Exhibition</div>
           <div class="event-title">The Art of Ceramics</div>
@@ -86,7 +86,7 @@
     <h2 class="section-gap">Upcoming Events</h2>
     <div class="event-grid">
       <div class="event-card">
-        <div class="event-img alt">Friday Late: Creativity</div>
+        <div class="event-img" data-search="printmaking etching engraving"></div>
         <div class="event-body">
           <div class="event-tag">Event · 18+</div>
           <div class="event-title">Friday Late: Creativity Unlocked</div>
@@ -95,7 +95,7 @@
         </div>
       </div>
       <div class="event-card">
-        <div class="event-img">Family Workshop: Print Making</div>
+        <div class="event-img" data-search="woodblock print relief printing"></div>
         <div class="event-body">
           <div class="event-tag">Event · Family</div>
           <div class="event-title">Family Workshop: Print Making</div>
@@ -104,7 +104,7 @@
         </div>
       </div>
       <div class="event-card">
-        <div class="event-img alt2">Jewellery Design Course</div>
+        <div class="event-img" data-search="jewellery gold necklace brooch design"></div>
         <div class="event-body">
           <div class="event-tag">Course · Adults</div>
           <div class="event-title">Introduction to Jewellery Design</div>
@@ -114,6 +114,29 @@
       </div>
     </div>
   </div>
+  <script>
+    document.addEventListener("DOMContentLoaded", () => {
+      document.querySelectorAll(".event-img[data-search]").forEach(async (el) => {
+        const term = el.dataset.search;
+        try {
+          const res = await fetch(
+            `https://api.vam.ac.uk/v2/objects/search?q=${encodeURIComponent(term)}&images_exist=1&page_size=1`
+          );
+          const data = await res.json();
+          const imgId = data.records?.[0]?._primaryImageId;
+          if (imgId) {
+            const img = document.createElement("img");
+            img.src = `https://framemark.vam.ac.uk/collections/${imgId}/full/600,/0/default.jpg`;
+            img.alt = term;
+            img.style.cssText = "width:100%;height:100%;object-fit:cover;display:block;";
+            el.style.padding = "0";
+            el.style.fontSize = "0";
+            el.appendChild(img);
+          }
+        } catch (_) {}
+      });
+    });
+  </script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/annyang/2.6.1/annyang.min.js"></script>
   <script src="voice-nav.js"></script>
 </body>

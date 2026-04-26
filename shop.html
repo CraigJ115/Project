@@ -35,7 +35,7 @@
   <div class="main-search-bar">
     <div class="search-bar-inner">
       <div class="search-bar-row">
-        <button id="btn-voice-interact" class="btn-voice-interact">Click to interact with voice</button>
+        <button id="btn-voice-interact" class="btn-voice-interact">Voice control</button>
         <button id="btn-show-help" class="btn-help" title="How to use">? Help</button>
       </div>
       <span id="voice-status"></span>
@@ -61,7 +61,7 @@
     <h2>Featured Products</h2>
     <div class="shop-grid">
       <div class="shop-card">
-        <div class="shop-img c1">📚</div>
+        <div class="shop-img" data-search="william morris textile pattern"></div>
         <div class="shop-body">
           <div class="shop-name">V&A Pattern: William Morris</div>
           <div class="shop-type">Book</div>
@@ -70,7 +70,7 @@
         </div>
       </div>
       <div class="shop-card">
-        <div class="shop-img c2">🖼️</div>
+        <div class="shop-img" data-search="peacock feathers pattern"></div>
         <div class="shop-body">
           <div class="shop-name">Peacock Room Print</div>
           <div class="shop-type">Print · A2</div>
@@ -79,7 +79,7 @@
         </div>
       </div>
       <div class="shop-card">
-        <div class="shop-img c3">💍</div>
+        <div class="shop-img" data-search="art nouveau ring jewellery"></div>
         <div class="shop-body">
           <div class="shop-name">Art Nouveau Ring</div>
           <div class="shop-type">Jewellery · Sterling Silver</div>
@@ -88,7 +88,7 @@
         </div>
       </div>
       <div class="shop-card">
-        <div class="shop-img c1">☕</div>
+        <div class="shop-img" data-search="morris ceramics earthenware"></div>
         <div class="shop-body">
           <div class="shop-name">Morris &amp; Co. Mug</div>
           <div class="shop-type">Home · Ceramic</div>
@@ -97,7 +97,7 @@
         </div>
       </div>
       <div class="shop-card">
-        <div class="shop-img c2">✏️</div>
+        <div class="shop-img" data-search="floral pattern wallpaper design"></div>
         <div class="shop-body">
           <div class="shop-name">V&A Notebook Set</div>
           <div class="shop-type">Stationery · Set of 3</div>
@@ -106,7 +106,7 @@
         </div>
       </div>
       <div class="shop-card">
-        <div class="shop-img c3">🛍️</div>
+        <div class="shop-img" data-search="strawberry thief morris textile"></div>
         <div class="shop-body">
           <div class="shop-name">Strawberry Thief Tote</div>
           <div class="shop-type">Accessories · Canvas</div>
@@ -115,7 +115,7 @@
         </div>
       </div>
       <div class="shop-card">
-        <div class="shop-img c1">🎨</div>
+        <div class="shop-img" data-search="modernist furniture design"></div>
         <div class="shop-body">
           <div class="shop-name">The History of Design</div>
           <div class="shop-type">Book · Hardcover</div>
@@ -124,7 +124,7 @@
         </div>
       </div>
       <div class="shop-card">
-        <div class="shop-img c2">🕯️</div>
+        <div class="shop-img" data-search="silver candlestick ornamental"></div>
         <div class="shop-body">
           <div class="shop-name">V&A Scented Candle</div>
           <div class="shop-type">Home · 200g</div>
@@ -134,6 +134,28 @@
       </div>
     </div>
   </div>
+  <script>
+    document.addEventListener("DOMContentLoaded", () => {
+      document.querySelectorAll(".shop-img[data-search]").forEach(async (el) => {
+        const term = el.dataset.search;
+        try {
+          const res = await fetch(
+            `https://api.vam.ac.uk/v2/objects/search?q=${encodeURIComponent(term)}&images_exist=1&page_size=1`
+          );
+          const data = await res.json();
+          const imgId = data.records?.[0]?._primaryImageId;
+          if (imgId) {
+            const img = document.createElement("img");
+            img.src = `https://framemark.vam.ac.uk/collections/${imgId}/full/400,/0/default.jpg`;
+            img.alt = term;
+            img.style.cssText = "width:100%;height:100%;object-fit:contain;";
+            el.style.background = "#f5f5f3";
+            el.appendChild(img);
+          }
+        } catch (_) {}
+      });
+    });
+  </script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/annyang/2.6.1/annyang.min.js"></script>
   <script src="voice-nav.js"></script>
 </body>
