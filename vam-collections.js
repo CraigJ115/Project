@@ -482,7 +482,7 @@ function showWelcomeModal() {
         <h2>How to Use:</h2>
         <ul>
           <li><strong>Search:</strong> Type in the box or say "search for [item]" to find objects</li>
-          <li><strong>Voice Control:</strong> Say "start voice interaction" or click the button to activate voice commands</li>
+          <li><strong>Voice Control:</strong> Say "start voice interaction" or click the button to activate, "stop voice interaction" or click again to deactivate</li>
           <li><strong>Item Details:</strong> Click any item to see full details and similar pieces</li>
           <li><strong>Navigate:</strong> Use pagination or voice commands like "next page" and "previous page"</li>
         </ul>
@@ -649,6 +649,7 @@ function initVoice() {
 
   const commands = {
     "start voice interaction": () => { if (!isListening) setActive(true); },
+    "stop voice interaction": () => { if (isListening) setActive(false); },
     "scroll *direction": (direction) => {
       if (!isListening) return;
       const d = (direction || "").trim().toLowerCase();
@@ -704,6 +705,7 @@ function initVoice() {
     const t = ((phrases && phrases[0]) || "").toLowerCase().trim();
 
     if (t.includes("start voice interaction")) { if (!isListening) setActive(true); return; }
+    if (t.includes("stop voice interaction")) { if (isListening) setActive(false); return; }
     if (!isListening) return;
 
     if (t.includes("next page"))                              { goNextPage(); return; }

@@ -51,6 +51,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
   annyang.addCommands({
     "start voice interaction": () => { if (!isListening) setActive(true); },
+    "stop voice interaction": () => { if (isListening) setActive(false); },
     "take me to *page": (page) => { if (!isListening) return; navigateToPage(page); },
     "scroll *direction": (direction) => {
       if (!isListening) return;
@@ -65,6 +66,7 @@ document.addEventListener("DOMContentLoaded", () => {
   annyang.addCallback("resultNoMatch", (phrases) => {
     const t = ((phrases && phrases[0]) || "").toLowerCase().trim();
     if (t.includes("start voice interaction")) { if (!isListening) setActive(true); return; }
+    if (t.includes("stop voice interaction")) { if (isListening) setActive(false); return; }
     if (!isListening) return;
     if (t.includes("take me to")) { navigateToPage(t.replace(/.*take me to\s*/i, "").replace(/[^a-z0-9\s']/g, "").trim()); return; }
     if (t.includes("scroll down")) { window.scrollBy({ top: 400, behavior: "smooth" }); setVoiceStatus("Scrolling down."); return; }
@@ -91,7 +93,8 @@ function showHelpModal() {
         <h1>Voice Commands</h1>
         <h2>Activate Voice</h2>
         <ul>
-          <li>Click the button or say <strong>"start voice interaction"</strong></li>
+          <li>Say <strong>"start voice interaction"</strong> or click the button to activate</li>
+          <li>Say <strong>"stop voice interaction"</strong> or click again to deactivate</li>
         </ul>
         <h2>Navigate Pages</h2>
         <ul>
