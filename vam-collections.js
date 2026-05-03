@@ -566,6 +566,8 @@ function navigateToPage(page) {
     "what's on": "whatson.html",
     "what is on": "whatson.html",
     "what on": "whatson.html",
+    "watson": "whatson.html",
+    "what son": "whatson.html",
     "events": "whatson.html",
     "exhibitions": "whatson.html",
     "whats happening": "whatson.html",

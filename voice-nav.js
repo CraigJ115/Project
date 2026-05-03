@@ -20,6 +20,8 @@ document.addEventListener("DOMContentLoaded", () => {
       "what's on": "whatson.html",
       "what is on": "whatson.html",
       "what on": "whatson.html",
+      "watson": "whatson.html",
+      "what son": "whatson.html",
       "events": "whatson.html",
       "exhibitions": "whatson.html",
       "whats happening": "whatson.html",
@@ -60,9 +62,9 @@ document.addEventListener("DOMContentLoaded", () => {
     if (url) {
       setVoiceStatus(`Taking you to ${page}…`);
       window.location.href = url;
-    } else {
-      setVoiceStatus(`Couldn't find a page called "${page}".`);
+      return true;
     }
+    return false;
   }
 
   if (!window.annyang) {
@@ -109,6 +111,17 @@ document.addEventListener("DOMContentLoaded", () => {
     if (!isListening) return;
     if (t.includes("scroll down")) { window.scrollBy({ top: 400, behavior: "smooth" }); setVoiceStatus("Scrolling down."); return; }
     if (t.includes("scroll up"))   { window.scrollBy({ top: -400, behavior: "smooth" }); setVoiceStatus("Scrolling up."); return; }
+
+    // fallback: if "take me to" was misheard, check if the last word(s) are a known page
+    const words = t.replace(/[^a-z0-9\s]/g, "").trim().split(/\s+/);
+    const last1 = words.slice(-1).join(" ");
+    const last2 = words.slice(-2).join(" ");
+    const last3 = words.slice(-3).join(" ");
+    for (const chunk of [last3, last2, last1]) {
+      const result = navigateToPage(chunk);
+      if (result) return;
+    }
+
     setVoiceStatus("Didn't catch that — still listening…");
   });
 
