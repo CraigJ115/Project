@@ -582,6 +582,7 @@ function navigateToPage(page) {
     "browse": "index.html",
     "home": "index.html",
     "learn": "learn.html",
+    "lane": "learn.html",
     "learning": "learn.html",
     "education": "learn.html",
     "schools": "learn.html",
