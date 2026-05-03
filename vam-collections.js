@@ -764,7 +764,7 @@ function initVoice() {
     if (t.includes("help"))                                   { showWelcomeModal(); return; }
 
     console.log("[select] heard:", t);
-    const selectMatch = t.match(/select image\s+(\w+)/);
+    const selectMatch = t.match(/select (?:the )?image\s+(\w+)/);
     console.log("[select] regex match:", selectMatch);
     if (selectMatch) {
       const idx = parseSpokenNumber(selectMatch[1]);
