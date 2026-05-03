@@ -96,8 +96,13 @@ document.addEventListener("DOMContentLoaded", () => {
     "go to bottom": () => { if (!isListening) return; window.scrollTo({ top: document.body.scrollHeight, behavior: "smooth" }); setVoiceStatus("Going to bottom."); },
   });
 
+  annyang.addCallback("result", (phrases) => {
+    console.log("[voice] matched:", phrases);
+  });
+
   annyang.addCallback("resultNoMatch", (phrases) => {
     const t = ((phrases && phrases[0]) || "").toLowerCase().trim();
+    console.log("[voice] no match, heard:", phrases);
     if (t.includes("start voice interaction")) { if (!isListening) setActive(true); return; }
     if (t.includes("stop voice interaction"))  { if (isListening) setActive(false); return; }
     if (t.includes("take me to")) { navigateToPage(t.replace(/.*take me to\s*/i, "").replace(/[^a-z0-9\s']/g, "").trim()); return; }
