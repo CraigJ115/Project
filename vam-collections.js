@@ -751,6 +751,12 @@ function initVoice() {
     if (t.includes("start voice interaction")) { if (!isListening) setActive(true); return; }
     if (t.includes("stop voice interaction")) { if (isListening) setActive(false); return; }
     if (t.includes("take me to"))                             { navigateToPage(t.replace(/.*take me to\s*/i, "").replace(/[^a-z0-9\s']/g, "").trim()); return; }
+    if (t.includes("close")) {
+      const welcomeRoot = document.getElementById("welcome-modal-root");
+      if (welcomeRoot && welcomeRoot.innerHTML) { welcomeRoot.innerHTML = ""; setVoiceStatus("Closed."); return; }
+      if (state.selectedId) { closeModal(); setVoiceStatus("Closed."); return; }
+      return;
+    }
     if (!isListening) return;
 
     if (t.includes("next page"))                              { goNextPage(); return; }
@@ -758,7 +764,6 @@ function initVoice() {
     if (t.includes("first page"))                             { setState({ page: 1 }); loadResults(); window.scrollTo({ top: 0, behavior: "smooth" }); setVoiceStatus("Back to page one."); return; }
     if (t.includes("scroll down"))                            { const m = state.selectedId ? document.querySelector(".modal") : null; if (m) m.scrollBy({ top: 400, behavior: "smooth" }); else window.scrollBy({ top: 400, behavior: "smooth" }); setVoiceStatus("Scrolling down."); return; }
     if (t.includes("scroll up"))                              { const m = state.selectedId ? document.querySelector(".modal") : null; if (m) m.scrollBy({ top: -400, behavior: "smooth" }); else window.scrollBy({ top: -400, behavior: "smooth" }); setVoiceStatus("Scrolling up."); return; }
-    if (t.includes("close"))                                  { if (state.selectedId) { closeModal(); setVoiceStatus("Closed."); } return; }
     if (t.includes("recommendation"))                         { showRecommendationsPanel(); return; }
     if (t.includes("more like") || (t.includes("show") && t.includes("more"))) { runMoreLikeThis(); return; }
     if (t.includes("help"))                                   { showWelcomeModal(); return; }
