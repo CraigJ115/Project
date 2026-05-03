@@ -112,8 +112,9 @@ document.addEventListener("DOMContentLoaded", () => {
     setVoiceStatus("Didn't catch that — still listening…");
   });
 
-  annyang.addCallback("end",   () => { setTimeout(() => annyang.start({ autoRestart: true, continuous: true }), 300); });
-  annyang.addCallback("error", () => { setTimeout(() => annyang.start({ autoRestart: true, continuous: true }), 300); });
+  annyang.addCallback("start", () => { console.log("[voice] recognition started"); });
+  annyang.addCallback("end",   () => { console.log("[voice] recognition ended"); setTimeout(() => annyang.start({ autoRestart: true, continuous: true }), 300); });
+  annyang.addCallback("error", (err) => { console.log("[voice] error:", err?.error); setTimeout(() => annyang.start({ autoRestart: true, continuous: true }), 300); });
 
   annyang.start({ autoRestart: true, continuous: true });
 
