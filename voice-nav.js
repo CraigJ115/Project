@@ -33,13 +33,15 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   }
 
-  if (!window.annyang) {
+  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SpeechRecognition) {
     if (interactBtn) interactBtn.disabled = true;
+    setVoiceStatus("Voice not supported in this browser.");
     return;
   }
 
-  annyang.removeCommands();
   let isListening = false;
+  let recognition = null;
 
   function setActive(active) {
     isListening = active;
@@ -50,43 +52,55 @@ document.addEventListener("DOMContentLoaded", () => {
     setVoiceStatus(active ? "Listening…" : "");
   }
 
-  annyang.addCommands({
-    "start voice interaction": () => { if (!isListening) setActive(true); },
-    "stop voice interaction": () => { if (isListening) setActive(false); },
-    "take me to *page": (page) => { navigateToPage(page); },
-    "scroll *direction": (direction) => {
-      if (!isListening) return;
-      const d = (direction || "").toLowerCase();
-      if (d.includes("down")) { window.scrollBy({ top: 400, behavior: "smooth" }); setVoiceStatus("Scrolling down."); }
-      else if (d.includes("up")) { window.scrollBy({ top: -400, behavior: "smooth" }); setVoiceStatus("Scrolling up."); }
-    },
-    "go to top": () => { if (!isListening) return; window.scrollTo({ top: 0, behavior: "smooth" }); setVoiceStatus("Going to top."); },
-    "go to bottom": () => { if (!isListening) return; window.scrollTo({ top: document.body.scrollHeight, behavior: "smooth" }); setVoiceStatus("Going to bottom."); },
-  });
-
-  annyang.addCallback("resultNoMatch", (phrases) => {
-    const t = ((phrases && phrases[0]) || "").toLowerCase().trim();
-    if (t.includes("start voice interaction")) { if (!isListening) setActive(true); return; }
-    if (t.includes("stop voice interaction")) { if (isListening) setActive(false); return; }
+  function handleTranscript(t) {
+    t = t.toLowerCase().trim();
+    if (t.includes("stop voice interaction")) { setActive(false); return; }
     if (t.includes("take me to")) { navigateToPage(t.replace(/.*take me to\s*/i, "").replace(/[^a-z0-9\s']/g, "").trim()); return; }
-    if (!isListening) return;
     if (t.includes("scroll down")) { window.scrollBy({ top: 400, behavior: "smooth" }); setVoiceStatus("Scrolling down."); return; }
     if (t.includes("scroll up")) { window.scrollBy({ top: -400, behavior: "smooth" }); setVoiceStatus("Scrolling up."); return; }
-    setVoiceStatus("Didn't catch that — still listening…");
-  });
+    if (t.includes("go to top")) { window.scrollTo({ top: 0, behavior: "smooth" }); setVoiceStatus("Going to top."); return; }
+    if (t.includes("go to bottom")) { window.scrollTo({ top: document.body.scrollHeight, behavior: "smooth" }); setVoiceStatus("Going to bottom."); return; }
+    setVoiceStatus(`Heard "${t}" — didn't recognise that.`);
+  }
 
-  annyang.addCallback("end", () => { if (isListening) setTimeout(() => annyang.start({ autoRestart: true, continuous: true }), 300); });
-  annyang.addCallback("error", () => { if (isListening) setTimeout(() => annyang.start({ autoRestart: true, continuous: true }), 300); });
+  function startRecognition() {
+    recognition = new SpeechRecognition();
+    recognition.lang = "en-GB";
+    recognition.continuous = false;
+    recognition.interimResults = false;
 
-  if (interactBtn) interactBtn.addEventListener("click", () => {
-    if (!isListening) {
-      annyang.start({ autoRestart: true, continuous: true });
-      setActive(true);
-    } else {
-      annyang.abort();
-      setActive(false);
-    }
-  });
+    recognition.onresult = (e) => {
+      const transcript = e.results[0][0].transcript;
+      handleTranscript(transcript);
+    };
+
+    recognition.onend = () => {
+      if (isListening) setTimeout(startRecognition, 250);
+    };
+
+    recognition.onerror = (e) => {
+      if (e.error === "not-allowed") {
+        setVoiceStatus("Microphone access denied.");
+        setActive(false);
+        return;
+      }
+      if (isListening) setTimeout(startRecognition, 500);
+    };
+
+    recognition.start();
+  }
+
+  if (interactBtn) {
+    interactBtn.addEventListener("click", () => {
+      if (!isListening) {
+        setActive(true);
+        startRecognition();
+      } else {
+        setActive(false);
+        if (recognition) recognition.abort();
+      }
+    });
+  }
 
   document.getElementById("btn-show-help")?.addEventListener("click", showHelpModal);
 });
@@ -100,8 +114,8 @@ function showHelpModal() {
         <h1>Voice Commands</h1>
         <h2>Activate Voice</h2>
         <ul>
-          <li>Say <strong>"start voice interaction"</strong> or click the button to activate</li>
-          <li>Say <strong>"stop voice interaction"</strong> or click again to deactivate</li>
+          <li>Click the <strong>Voice control</strong> button to start listening</li>
+          <li>Click again to stop</li>
         </ul>
         <h2>Navigate Pages</h2>
         <ul>
