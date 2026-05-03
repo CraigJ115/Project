@@ -11,6 +11,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const map = {
       "visit": "visit.html",
       "visit us": "visit.html",
+      "visitors": "visit.html",
       "whats on": "whatson.html",
       "what's on": "whatson.html",
       "what is on": "whatson.html",
@@ -52,7 +53,7 @@ document.addEventListener("DOMContentLoaded", () => {
   annyang.addCommands({
     "start voice interaction": () => { if (!isListening) setActive(true); },
     "stop voice interaction": () => { if (isListening) setActive(false); },
-    "take me to *page": (page) => { if (!isListening) return; navigateToPage(page); },
+    "take me to *page": (page) => { navigateToPage(page); },
     "scroll *direction": (direction) => {
       if (!isListening) return;
       const d = (direction || "").toLowerCase();
@@ -67,19 +68,25 @@ document.addEventListener("DOMContentLoaded", () => {
     const t = ((phrases && phrases[0]) || "").toLowerCase().trim();
     if (t.includes("start voice interaction")) { if (!isListening) setActive(true); return; }
     if (t.includes("stop voice interaction")) { if (isListening) setActive(false); return; }
-    if (!isListening) return;
     if (t.includes("take me to")) { navigateToPage(t.replace(/.*take me to\s*/i, "").replace(/[^a-z0-9\s']/g, "").trim()); return; }
+    if (!isListening) return;
     if (t.includes("scroll down")) { window.scrollBy({ top: 400, behavior: "smooth" }); setVoiceStatus("Scrolling down."); return; }
     if (t.includes("scroll up")) { window.scrollBy({ top: -400, behavior: "smooth" }); setVoiceStatus("Scrolling up."); return; }
     setVoiceStatus("Didn't catch that — still listening…");
   });
 
-  annyang.addCallback("end", () => { setTimeout(() => annyang.start({ autoRestart: true, continuous: true }), 300); });
-  annyang.addCallback("error", () => { setTimeout(() => annyang.start({ autoRestart: true, continuous: true }), 300); });
+  annyang.addCallback("end", () => { if (isListening) setTimeout(() => annyang.start({ autoRestart: true, continuous: true }), 300); });
+  annyang.addCallback("error", () => { if (isListening) setTimeout(() => annyang.start({ autoRestart: true, continuous: true }), 300); });
 
-  annyang.start({ autoRestart: true, continuous: true });
-
-  if (interactBtn) interactBtn.addEventListener("click", () => setActive(!isListening));
+  if (interactBtn) interactBtn.addEventListener("click", () => {
+    if (!isListening) {
+      annyang.start({ autoRestart: true, continuous: true });
+      setActive(true);
+    } else {
+      annyang.abort();
+      setActive(false);
+    }
+  });
 
   document.getElementById("btn-show-help")?.addEventListener("click", showHelpModal);
 });
