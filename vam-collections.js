@@ -755,8 +755,14 @@ function initVoice() {
     if (t.includes("more like") || (t.includes("show") && t.includes("more"))) { runMoreLikeThis(); return; }
     if (t.includes("help"))                                   { showWelcomeModal(); return; }
 
+    console.log("[select] heard:", t);
     const selectMatch = t.match(/select image\s+(\w+)/);
-    if (selectMatch) { const idx = parseSpokenNumber(selectMatch[1]); if (idx !== null) { openResultByIndex(idx - 1); return; } }
+    console.log("[select] regex match:", selectMatch);
+    if (selectMatch) {
+      const idx = parseSpokenNumber(selectMatch[1]);
+      console.log("[select] parsed number:", idx);
+      if (idx !== null) { openResultByIndex(idx - 1); return; }
+    }
 
     setVoiceStatus("Didn't catch that — still listening…");
   });
